@@ -3,7 +3,7 @@
  * Tự động tra cứu Tứ Trị từ calendar-core.js và kế thừa logic m01-m08.
  */
 
-const StrategyFinderModule = (function () {
+window.StrategyFinderModule = (function () {
 
     // Thang điểm định lượng năng lượng hào chuẩn Cổ Pháp
     const SCORE_LEVELS = {
@@ -19,14 +19,20 @@ const StrategyFinderModule = (function () {
     };
 
     /**
-     * 1. Tra cứu Tứ Trị từ calendar-core.js (Hỗ trợ cả 2 chuẩn gọi)
+     * 1. Tra cứu Tứ Trị an toàn từ calendar-core.js
      */
     function getTuTriFromCalendar(dateObj) {
         let ctx = null;
-        if (typeof CalendarCore !== 'undefined' && CalendarCore.NL_getDayContext) {
-            ctx = CalendarCore.NL_getDayContext(dateObj);
-        } else if (typeof NL_getDayContext === 'function') {
-            ctx = NL_getDayContext(dateObj);
+        try {
+            if (typeof CalendarCore !== 'undefined' && CalendarCore.NL_getDayContext) {
+                ctx = CalendarCore.NL_getDayContext(dateObj);
+            } else if (typeof NL_getDayContext === 'function') {
+                ctx = NL_getDayContext(dateObj);
+            } else if (window.CalendarCore && window.CalendarCore.NL_getDayContext) {
+                ctx = window.CalendarCore.NL_getDayContext(dateObj);
+            }
+        } catch (e) {
+            console.warn("m09.js: Không thể lấy context từ CalendarCore", e);
         }
 
         if (ctx) {
@@ -40,7 +46,7 @@ const StrategyFinderModule = (function () {
             };
         }
 
-        // Fallback an toàn nếu chưa nạp kịp calendar-core
+        // Fallback mặc định nếu chưa lấy được thời gian
         return {
             gioCanChi: "Quý Dậu",
             ngayCanChi: "Kỷ Sửu",
@@ -59,26 +65,28 @@ const StrategyFinderModule = (function () {
         let score = SCORE_LEVELS.MEDIUM;
         let logs = [];
 
-        // Kế thừa logic m02 nếu có
-        if (typeof ModuleM02 !== 'undefined' && ModuleM02.calcVuangSuy) {
-            const vsResult = ModuleM02.calcVuangSuy(hao, tuTri);
-            score = vsResult.score;
-            logs.push(vsResult.desc);
-        } else {
-            // Logic Cổ Pháp chuẩn
-            if (hao.isNguyetTruc || hao.isNhatTruc) {
-                score = SCORE_LEVELS.VUONG;
-                logs.push("Lâm/Trực Nhật Nguyệt");
-            } else if (hao.isNguyetSinh || hao.isNhatSinh) {
-                score = SCORE_LEVELS.MEDIUM_PLUS;
-                logs.push("Được Nhật/Nguyệt sinh");
-            } else if (hao.isNguyetPha) {
-                score = SCORE_LEVELS.TUYET_MO_PHA;
-                logs.push("Nguyệt Phá");
-            } else if (hao.isNhatMo || hao.isNguyetMo) {
-                score = SCORE_LEVELS.SUY;
-                logs.push("Nhập Mộ tại Tứ Trị");
+        try {
+            if (typeof ModuleM02 !== 'undefined' && ModuleM02.calcVuangSuy) {
+                const vsResult = ModuleM02.calcVuangSuy(hao, tuTri);
+                score = vsResult.score;
+                logs.push(vsResult.desc);
+            } else {
+                if (hao.isNguyetTruc || hao.isNhatTruc) {
+                    score = SCORE_LEVELS.VUONG;
+                    logs.push("Lâm/Trực Nhật Nguyệt");
+                } else if (hao.isNguyetSinh || hao.isNhatSinh) {
+                    score = SCORE_LEVELS.MEDIUM_PLUS;
+                    logs.push("Được Nhật/Nguyệt sinh");
+                } else if (hao.isNguyetPha) {
+                    score = SCORE_LEVELS.TUYET_MO_PHA;
+                    logs.push("Nguyệt Phá");
+                } else if (hao.isNhatMo || hao.isNguyetMo) {
+                    score = SCORE_LEVELS.SUY;
+                    logs.push("Nhập Mộ tại Tứ Trị");
+                }
             }
+        } catch (err) {
+            score = SCORE_LEVELS.MEDIUM;
         }
 
         const isOk = score >= SCORE_LEVELS.MEDIUM;
@@ -102,7 +110,6 @@ const StrategyFinderModule = (function () {
             hasRiskForThe: false
         };
 
-        // Định lượng 6: Thế & Lục Thân
         if (theHao && lucThanHao && theHao.index === lucThanHao.index) {
             results.d6_The_LucThan = {
                 score: SCORE_LEVELS.VUONG,
@@ -114,7 +121,6 @@ const StrategyFinderModule = (function () {
             if (rel.isNegativeForThe) results.hasRiskForThe = true;
         }
 
-        // Định lượng 7 & 8: Động / Biến tác động Lục Thân
         if (dongHaoList && dongHaoList.length > 0) {
             results.d7_Dong_LucThan = checkGroupImpact(dongHaoList, lucThanHao);
         }
@@ -122,11 +128,9 @@ const StrategyFinderModule = (function () {
             results.d8_Bien_LucThan = checkGroupImpact(bienHaoList, lucThanHao);
         }
 
-        // Định lượng 9: Ứng & Lục Thân (Mức ưu tiên thấp nhất)
         const ungRel = checkSinhKhacRelation(ungHao, lucThanHao);
         results.d9_Ung_LucThan = { score: ungRel.score, text: `Ứng ${ungRel.type} Lục Thân` };
 
-        // Kiểm tra Ứng có hại Thế không
         const ungTheRel = checkSinhKhacRelation(ungHao, theHao);
         if (ungTheRel.isNegativeForThe) results.hasRiskForThe = true;
 
@@ -169,7 +173,12 @@ const StrategyFinderModule = (function () {
         const targetLucThan = params ? params.targetLucThan : "Thê Tài";
         const quanQuyOption = params ? params.quanQuyOption : "CAT_THAN";
 
-        const allQueList = typeof ModuleM01 !== 'undefined' && ModuleM01.getAll64Que ? ModuleM01.getAll64Que() : [];
+        let allQueList = [];
+        if (typeof ModuleM01 !== 'undefined' && ModuleM01.getAll64Que) {
+            allQueList = ModuleM01.getAll64Que();
+        } else if (window.ModuleM01 && window.ModuleM01.getAll64Que) {
+            allQueList = window.ModuleM01.getAll64Que();
+        }
 
         allQueList.forEach(que => {
             if (!que.possibleDongCases) return;
@@ -225,6 +234,8 @@ const StrategyFinderModule = (function () {
 
         return results;
     }
+
+    console.log("m09.js: Loaded successfully!");
 
     return {
         searchStrategyQue: searchStrategyQue,
