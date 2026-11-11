@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kinh Dịch Lục Hào</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --gold: #d4af37; --bg: #121212; --card: #1e1e1e; 
+            --text: #e0e0e0; --primary: #c0392b; --accent: #27ae60; --border: #333;
+        }
+        body { 
+            font-family: 'Lexend', sans-serif; background: var(--bg); color: var(--text); 
+            margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; 
+        }
+        .container { width: 100%; max-width: 650px; }
+        .header { text-align: center; padding: 15px 0; border-bottom: 2px solid var(--gold); margin-bottom: 20px; }
+        .header h1 { color: var(--gold); font-size: 1.4rem; margin: 0; letter-spacing: 2px; text-transform: uppercase; }
+        .box { background: var(--card); border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-bottom: 20px; border: 1px solid var(--border); }
+        label { font-size: 0.7rem; font-weight: 600; color: var(--gold); text-transform: uppercase; margin-bottom: 8px; display: block; opacity: 0.8; }
+        select { 
+            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444; 
+            background: #252525; color: white; font-family: inherit; font-size: 1rem; margin-bottom: 15px; outline: none;
+        }
+        .dong-selector { display: flex; justify-content: space-between; gap: 5px; margin-bottom: 6px; }
+        .dong-item { flex: 1; text-align: center; cursor: pointer; transition: 0.2s; padding: 10px 0; border-radius: 8px; background: #252525; border: 1px solid #444; position: relative; }
+        .dong-item.active { background: var(--primary); border-color: var(--gold); }
+        .dong-item span { font-size: 0.65rem; font-weight: bold; color: #bbb; }
+        .dong-item.active span { color: white; }
+        .dong-order { position: absolute; top: -6px; right: -6px; background: var(--gold); color: #000; font-size: 0.6rem; font-weight: 800; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .dong-counter { font-size: 0.65rem; color: #888; text-align: right; margin-bottom: 15px; }
+        .dong-counter.full { color: var(--primary); font-weight: 600; }
+        .btn-copy { 
+            width: 100%; padding: 15px; background: var(--gold); color: #000; border: none; 
+            border-radius: 10px; font-weight: bold; cursor: pointer; display: none; margin-top: 10px; font-family: inherit;
+        }
+        .fallback-box { display: none; margin-top: 12px; }
+        .fallback-box textarea {
+            width: 100%; min-height: 160px; box-sizing: border-box; padding: 10px;
+            border-radius: 8px; border: 1px solid var(--gold); background: #252525; color: #eee;
+            font-family: monospace; font-size: 0.75rem; resize: vertical;
+        }
+        .fallback-hint { font-size: 0.65rem; color: #888; margin-top: 6px; text-align: center; }
+        .ts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .ts-hao-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .ts-hao-grid select { margin-bottom: 0; font-size: 0.85rem; padding: 8px; }
+        .btn-secondary {
+            width: 100%; padding: 11px; background: transparent; color: var(--gold);
+            border: 1px solid var(--gold); border-radius: 10px; font-weight: 600; cursor: pointer;
+            margin-bottom: 15px; font-family: inherit; font-size: 0.8rem;
+        }
+        .ts-output { width: 100%; min-height: 320px; box-sizing: border-box; padding: 12px;
+            border-radius: 8px; border: 1px solid var(--gold); background: #252525; color: #eee;
+            font-family: monospace; font-size: 0.72rem; white-space: pre; resize: vertical; display: none; margin-bottom: 10px;
+        }
+        .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; display: none; margin-top: 10px; }
+        .que-card { background: var(--card); border-radius: 15px; overflow: hidden; border: 1px solid var(--border); }
+        .que-header { padding: 12px; text-align: center; background: #2a2a2a; border-bottom: 1px solid var(--border); }
+        .que-name { font-size: 1.1rem; color: var(--gold); margin: 0; font-weight: 600; }
+        .que-cung { font-size: 0.65rem; color: #888; margin-top: 4px; text-transform: uppercase; }
+        .hex-container { padding: 20px 10px; display: flex; flex-direction: column-reverse; gap: 12px; }
+        .hao-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 28px; }
+        .nap-giap { width: 130px; font-size: 0.75rem; color: #ccc; white-space: nowrap; }
+        .line-box { flex-grow: 1; height: 10px; position: relative; display: flex; align-items: center; justify-content: center; }
+        .line-yang { width: 100%; height: 100%; background: var(--gold); border-radius: 2px; }
+        .line-yin { width: 100%; height: 100%; display: flex; justify-content: space-between; }
+        .line-yin::before, .line-yin::after { content: ""; width: 44%; height: 100%; background: var(--gold); border-radius: 2px; }
+        .symbol-dong { position: absolute; font-weight: bold; font-size: 1.1rem; z-index: 2; text-shadow: 0 0 5px rgba(0,0,0,1); }
+        .is-dong-yang { color: #000; }
+        .is-dong-yin { color: var(--primary); }
+        .the-ung { width: 35px; font-size: 0.7rem; font-weight: bold; text-align: right; }
+        .label-the { color: var(--primary); }
+        .label-ung { color: var(--accent); }
+        @media (max-width: 500px) { .result-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header"><h1>Kinh Dịch Lục Hào</h1></div>
+    <div class="box">
+        <label>Chọn Họ Quẻ</label>
+        <select id="selectCung" onchange="updateQueList()">
+            <option value="">-- Chọn Cung --</option>
+            <option value="Can">Họ Kiền (Kim)</option>
+            <option value="Doai">Họ Đoài (Kim)</option>
+            <option value="Ly">Họ Ly (Hỏa)</option>
+            <option value="Chan">Họ Chấn (Mộc)</option>
+            <option value="Ton">Họ Tốn (Mộc)</option>
+            <option value="Kham">Họ Khảm (Thủy)</option>
+            <option value="Can2">Họ Cấn (Thổ)</option>
+            <option value="Khon">Họ Khôn (Thổ)</option>
+        </select>
+        <label>Tên Quẻ Chủ</label>
+        <select id="selectQue" onchange="processDich()">
+            <option value="">-- Chọn quẻ --</option>
+        </select>
+        <label>Chọn Hào Động (tối đa 4)</label>
+        <div class="dong-selector" id="dongSelector">
+            <div class="dong-item" onclick="toggleDong(1)"><span>Hào 1</span></div>
+            <div class="dong-item" onclick="toggleDong(2)"><span>Hào 2</span></div>
+            <div class="dong-item" onclick="toggleDong(3)"><span>Hào 3</span></div>
+            <div class="dong-item" onclick="toggleDong(4)"><span>Hào 4</span></div>
+            <div class="dong-item" onclick="toggleDong(5)"><span>Hào 5</span></div>
+            <div class="dong-item" onclick="toggleDong(6)"><span>Hào 6</span></div>
+        </div>
+        <div class="dong-counter" id="dongCounter">Đã chọn: 0/4 hào</div>
+        <button id="btnCopy" class="btn-copy" onclick="copyToClipboard()">📋 SAO CHÉP KẾT QUẢ</button>
+        <div class="fallback-box" id="fallbackBox">
+            <textarea id="fallbackText" readonly onclick="this.select()"></textarea>
+            <div class="fallback-hint">Trình duyệt chặn copy tự động — bấm vào ô trên để chọn hết rồi copy thủ công (Ctrl+C / giữ để copy)</div>
+        </div>
+    </div>
+    <div id="resultGrid" class="result-grid">
+        <div class="que-card">
+            <div class="que-header"><p id="resCungChu" class="que-cung"></p><h2 id="resNameChu" class="que-name"></h2></div>
+            <div id="hexChu" class="hex-container"></div>
+        </div>
+        <div class="que-card" id="cardBien" style="display:none;">
+            <div class="que-header"><p id="resCungBien" class="que-cung"></p><h2 id="resNameBien" class="que-name"></h2></div>
+            <div id="hexBien" class="hex-container"></div>
+        </div>
+    </div>
+
+    <!-- ================= START MODULE FORM & LOGIC THỜI - NHẬT - NGUYỆT - THÁI TUẾ - TUẦN KHÔNG - HÀO ĐỘNG ================= -->
+    <style>
+        .module-container { position: relative; }
+        .input-suggest-box { position: relative; margin-bottom: 12px; }
+        .input-suggest-box input {
+            width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #444;
+            background: #252525; color: white; font-family: inherit; font-size: 0.9rem;
+            box-sizing: border-box; outline: none;
+        }
+        .input-suggest-box input:focus { border-color: var(--gold); }
+        .suggestions-list {
+            position: absolute; top: 100%; left: 0; right: 0; background: #1a1a1a;
+            border: 1px solid var(--gold); border-radius: 8px; max-height: 180px;
+            overflow-y: auto; z-index: 100; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.8);
+        }
+        .suggestion-item { padding: 8px 12px; cursor: pointer; font-size: 0.85rem; color: #eee; border-bottom: 1px solid #2a2a2a; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background: var(--gold); color: #000; font-weight: bold; }
+        .m-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .m-btn-process {
+            width: 100%; padding: 12px; background: var(--gold); color: #000; border: none;
+            border-radius: 10px; font-weight: bold; cursor: pointer; font-family: inherit;
+            font-size: 0.9rem; margin-top: 5px; margin-bottom: 15px;
+        }
+        .m-btn-process:hover { opacity: 0.9; }
+        .m-output-box {
+            width: 100%; min-height: 200px; box-sizing: border-box; padding: 12px;
+            border-radius: 8px; border: 1px solid var(--gold); background: #252525;
+            color: #eee; font-family: monospace; font-size: 0.8rem; white-space: pre-wrap;
+            resize: vertical; display: none; margin-top: 10px;
+        }
+        .dl-grid {
+            display: grid; grid-template-columns: 2fr 1fr 1fr 1.2fr; gap: 8px; margin-bottom: 10px;
+        }
+        .dl-grid select, .dl-grid input {
+            width: 100%; padding: 10px 6px; border-radius: 8px; border: 1px solid #444;
+            background: #252525; color: white; font-family: inherit; font-size: 0.85rem;
+            box-sizing: border-box; text-align: center;
+        }
+        .dl-grid select { text-align: left; }
+    </style>
+
+    <div class="box module-container">
+        <div class="header" style="border-bottom: 1px solid var(--gold); padding: 5px 0 10px 0; margin-bottom: 15px;">
+            <h1 style="font-size: 1.1rem;">Lập Quẻ &amp; Xử Lý Dữ Liệu Lập Thời</h1>
+        </div>
+
+        <label>Nhập Nhanh Theo Dương Lịch (tuỳ chọn — tự suy Can Chi, phạm vi Tiết Khí 2023–2046)</label>
+
+        <div class="dl-grid">
+            <select id="lichGioChi">
+                <option value="">-- Giờ --</option>
+                <option value="Tý">Tý (23h-1h)</option>
+                <option value="Sửu">Sửu (1h-3h)</option>
+                <option value="Dần">Dần (3h-5h)</option>
+                <option value="Mão">Mão (7h-9h)</option>
+                <option value="Thìn">Thìn (5h-7h)</option>
+                <option value="Tỵ">Tỵ (9h-11h)</option>
+                <option value="Ngọ">Ngọ (11h-13h)</option>
+                <option value="Mùi">Mùi (13h-15h)</option>
+                <option value="Thân">Thân (15h-17h)</option>
+                <option value="Dậu">Dậu (17h-19h)</option>
+                <option value="Tuất">Tuất (19h-21h)</option>
+                <option value="Hợi">Hợi (21h-23h)</option>
+            </select>
+            <input type="number" id="lichNgay" placeholder="Ngày" min="1" max="31">
+            <input type="number" id="lichThang" placeholder="Tháng" min="1" max="12">
+            <input type="number" id="lichNam" placeholder="Năm" min="1900" max="2100">
+        </div>
+        <button class="btn-secondary" onclick="tinhCanChiTuDuongLich()">📅 TÍNH CAN CHI TỪ DƯƠNG LỊCH</button>
+
+        <!-- 1. THỜI -->
+        <div class="input-suggest-box">
+            <label>1. Thời ( Can &amp; Chi )</label>
+            <input type="text" id="mThoi" placeholder="Gõ Can (vd: Đinh, Mậu...)" autocomplete="off" oninput="handleSuggestGanChi(this, 'sugThoi')">
+            <div id="sugThoi" class="suggestions-list"></div>
+        </div>
+
+        <!-- 2 & 3. NHẬT THẦN & NGUYỆT LỆNH -->
+        <div class="m-grid">
+            <div class="input-suggest-box">
+                <label>2. Nhật Thần</label>
+                <input type="text" id="mNhat" placeholder="Gõ Can..." autocomplete="off" oninput="handleSuggestGanChi(this, 'sugNhat')">
+                <div id="sugNhat" class="suggestions-list"></div>
+            </div>
+            <div class="input-suggest-box">
+                <label>3. Nguyệt Lệnh</label>
+                <input type="text" id="mNguyet" placeholder="Gõ Can..." autocomplete="off" oninput="handleSuggestGanChi(this, 'sugNguyet')">
+                <div id="sugNguyet" class="suggestions-list"></div>
+            </div>
+        </div>
+
+        <!-- 4. THÁI TUẾ -->
+        <div class="input-suggest-box">
+            <label>4. Thái Tuế</label>
+            <input type="text" id="mThaiTue" placeholder="Gõ Can..." autocomplete="off" oninput="handleSuggestGanChi(this, 'sugThaiTue')">
+            <div id="sugThaiTue" class="suggestions-list"></div>
+        </div>
+
+        <!-- TUẦN KHÔNG & HÀO ĐỘNG -->
+        <div class="m-grid">
+            <div class="input-suggest-box">
+                <label>Tuần Không Địa Chi</label>
+                <input type="text" id="mTuanKhong" placeholder="Gõ 2 ký tự (Ty, Th, Tu, Ng...)" autocomplete="off" oninput="handleSuggestChiShort(this, 'sugTuanKhong')">
+                <div id="sugTuanKhong" class="suggestions-list"></div>
+            </div>
+            <div class="input-suggest-box">
+                <label>Hào Động (vd: 1,3 hoặc 2,4,5)</label>
+                <input type="text" id="mHaoDong" placeholder="Để trống nếu quẻ tĩnh..." autocomplete="off">
+            </div>
+        </div>
+
+        <button class="m-btn-process" onclick="processModuleLogic()">⚡ BẮT ĐẦU XỬ LÝ LOGIC</button>
+        <textarea id="mOutput" class="m-output-box" readonly onclick="this.select()"></textarea>
+    </div>
+
+    <div class="box">
+        <label>Trường Sinh &amp; Vượng Suy theo Nhật - Nguyệt</label>
+        <div class="ts-grid">
+            <div>
+                <label>Nhật (Ngày)</label>
+                <select id="tsNhat"></select>
+            </div>
+            <div>
+                <label>Nguyệt (Tháng)</label>
+                <select id="tsNguyet"></select>
+            </div>
+        </div>
+        <label>Địa Chi 6 Hào</label>
+        <div class="ts-hao-grid">
+            <select id="tsHao6"></select>
+            <select id="tsHao5"></select>
+            <select id="tsHao4"></select>
+            <select id="tsHao3"></select>
+            <select id="tsHao2"></select>
+            <select id="tsHao1"></select>
+        </div>
+        <button class="btn-secondary" onclick="autoFillFromQueChu()">↺ Lấy Địa Chi Từ Quẻ Chủ Ở Trên</button>
+        <button class="btn-copy" style="display:block;" onclick="tinhTruongSinhVuongSuy()">🔮 TÍNH TRƯỜNG SINH &amp; VƯỢNG SUY</button>
+        <textarea id="tsOutput" class="ts-output" readonly onclick="this.select()"></textarea>
+        <button id="tsBtnCopy" class="btn-copy" style="display:none;" onclick="copyTS()">📋 SAO CHÉP KẾT QUẢ TRƯỜNG SINH</button>
+    </div>
+
+    <!-- KHUNG CHỨA UI CHO CÁC MODULE NẠP TỪ FILE RỜI -->
+    <div id="module-slots"></div>
+</div>
+
+<script>
+// Data chuẩn 64 quẻ
+const dataDich = {
+    "Can": { hanh: "Kim", name: "Kiền", quẻ: {
+        "Càn Vi Thiên": { c: "111111", n: ["Tử Tôn Tý Thủy","Thê Tài Dần Mộc","Phụ Mẫu Thìn Thổ (Ứng)","Quan Quỷ Ngọ Hỏa","Huynh Đệ Thân Kim","Phụ Mẫu Tuất Thổ (Thế)"] },
+        "Thiên Phong Cấu": { c: "111110", n: ["Phụ Mẫu Sửu Thổ (Thế)","Tử Tôn Hợi Thủy","Huynh Đệ Dậu Kim","Quan Quỷ Ngọ Hỏa (Ứng)","Huynh Đệ Thân Kim","Phụ Mẫu Tuất Thổ"] },
+        "Thiên Sơn Độn": { c: "111100", n: ["Phụ Mẫu Thìn Thổ","Quan Quỷ Ngọ Hỏa (Thế)","Huynh Đệ Thân Kim","Quan Quỷ Ngọ Hỏa","Huynh Đệ Thân Kim (Ứng)","Phụ Mẫu Tuất Thổ"] },
+        "Thiên Địa Bĩ": { c: "111000", n: ["Phụ Mẫu Mùi Thổ","Quan Quỷ Tỵ Hỏa","Thê Tài Mão Mộc (Thế)","Quan Quỷ Ngọ Hỏa","Huynh Đệ Thân Kim","Phụ Mẫu Tuất Thổ (Ứng)"] },
+        "Phong Địa Quan": { c: "110000", n: ["Phụ Mẫu Mùi Thổ (Ứng)","Quan Quỷ Tỵ Hỏa","Thê Tài Mão Mộc","Phụ Mẫu Mùi Thổ (Thế)","Quan Quỷ Tỵ Hỏa","Thê Tài Mão Mộc"] },
+        "Sơn Địa Bác": { c: "100000", n: ["Phụ Mẫu Mùi Thổ","Quan Quỷ Tỵ Hỏa (Ứng)","Thê Tài Mão Mộc","Phụ Mẫu Tuất Thổ","Tử Tôn Tý Thủy (Thế)","Thê Tài Dần Mộc"] },
+        "Hỏa Địa Tấn": { c: "101000", n: ["Phụ Mẫu Mùi Thổ (Ứng)","Quan Quỷ Tỵ Hỏa","Thê Tài Mão Mộc","Huynh Đệ Dậu Kim (Thế)","Phụ Mẫu Mùi Thổ","Quan Quỷ Tỵ Hỏa"] },
+        "Hỏa Thiên Đại Hữu": { c: "101111", n: ["Tử Tôn Tý Thủy","Thê Tài Dần Mộc","Phụ Mẫu Thìn Thổ (Thế)","Huynh Đệ Dậu Kim","Phụ Mẫu Mùi Thổ","Quan Quỷ Tỵ Hỏa (Ứng)"] }
+    }},
+    "Doai": { hanh: "Kim", name: "Đoài", quẻ: {
+        "Đoài Vi Trạch": { c: "011011", n: ["Quan Quỷ Tỵ Hỏa","Thê Tài Mão Mộc","Phụ Mẫu Sửu Thổ (Ứng)","Tử Tôn Hợi Thủy","Huynh Đệ Dậu Kim","Phụ Mẫu Mùi Thổ (Thế)"] },
+        "Trạch Thủy Khốn": { c: "011010", n: ["Thê Tài Dần Mộc (Thế)","Phụ Mẫu Thìn Thổ","Quan Quỷ Ngọ Hỏa","Tử Tôn Hợi Thủy (Ứng)","Huynh Đệ Dậu Kim","Phụ Mẫu Mùi Thổ"] },
+        "Trạch Địa Tuỵ": { c: "011000", n: ["Phụ Mẫu Mùi Thổ","Quan Quỷ Tỵ Hỏa (Thế)","Thê Tài Mão Mộc","Tử Tôn Hợi Thủy","Huynh Đệ Dậu Kim (Ứng)","Phụ Mẫu Mùi Thổ"] },
+        "Trạch Sơn Hàm": { c: "011100", n: ["Phụ Mẫu Thìn Thổ","Quan Quỷ Ngọ Hỏa","Huynh Đệ Thân Kim (Thế)","Tử Tôn Hợi Thủy","Huynh Đệ Dậu Kim","Phụ Mẫu Mùi Thổ (Ứng)"] },
+        "Thủy Sơn Kiển": { c: "010100", n: ["Phụ Mẫu Thìn Thổ (Ứng)","Quan Quỷ Ngọ Hỏa","Huynh Đệ Thân Kim","Huynh Đệ Thân Kim (Thế)","Phụ Mẫu Tuất Thổ","Tử Tôn Tý Thủy"] },
+        "Địa Sơn Khiêm": { c: "000100", n: ["Phụ Mẫu Thìn Thổ","Quan Quỷ Ngọ Hỏa (Ứng)","Huynh Đệ Thân Kim","Phụ Mẫu Sửu Thổ","Tử Tôn Hợi Thủy (Thế)","Huynh Đệ Dậu Kim"] },
+        "Lôi Sơn Tiểu Quá": { c: "001100", n: ["Phụ Mẫu Thìn Thổ (Ứng)","Quan Quỷ Ngọ Hỏa","Huynh Đệ Thân Kim","Quan Quỷ Ngọ Hỏa (Thế)","Huynh Đệ Thân Kim","Phụ Mẫu Tuất Thổ"] },
+        "Lôi Trạch Quy Muội": { c: "001011", n: ["Quan Quỷ Tỵ Hỏa","Thê Tài Mão Mộc","Phụ Mẫu Sửu Thổ (Thế)","Quan Quỷ Ngọ Hỏa","Huynh Đệ Thân Kim","Phụ Mẫu Tuất Thổ (Ứng)"] }
+    }},
+    "Ly": { hanh: "Hỏa", name: "Ly", quẻ: {
+        "Ly Vi Hỏa": { c: "101101", n: ["Phụ Mẫu Mão Mộc","Tử Tôn Sửu Thổ","Quan Quỷ Hợi Thủy (Ứng)","Thê Tài Dậu Kim","Tử Tôn Mùi Thổ","Huynh Đệ Tỵ Hỏa (Thế)"] },
+        "Hỏa Sơn Lữ": { c: "101100", n: ["Tử Tôn Thìn Thổ (Thế)","Huynh Đệ Ngọ Hỏa","Thê Tài Thân Kim","Thê Tài Dậu Kim (Ứng)","Tử Tôn Mùi Thổ","Huynh Đệ Tỵ Hỏa"] },
+        "Hỏa Phong Đỉnh": { c: "101110", n: ["Tử Tôn Sửu Thổ","Quan Quỷ Hợi Thủy (Thế)","Thê Tài Dậu Kim","Thê Tài Dậu Kim","Tử Tôn Mùi Thổ (Ứng)","Huynh Đệ Tỵ Hỏa"] },
+        "Hỏa Thủy Vị Tế": { c: "101010", n: ["Phụ Mẫu Dần Mộc","Tử Tôn Thìn Thổ","Huynh Đệ Ngọ Hỏa (Thế)","Thê Tài Dậu Kim","Tử Tôn Mùi Thổ","Huynh Đệ Tỵ Hỏa (Ứng)"] },
+        "Sơn Thủy Mông": { c: "100010", n: ["Phụ Mẫu Dần Mộc (Ứng)","Tử Tôn Thìn Thổ","Huynh Đệ Ngọ Hỏa","Tử Tôn Tuất Thổ (Thế)","Quan Quỷ Tý Thủy","Phụ Mẫu Dần Mộc"] },
+        "Phong Thủy Hoán": { c: "110010", n: ["Phụ Mẫu Dần Mộc","Tử Tôn Thìn Thổ (Ứng)","Huynh Đệ Ngọ Hỏa","Tử Tôn Mùi Thổ","Huynh Đệ Tỵ Hỏa (Thế)","Phụ Mẫu Mão Mộc"] },
+        "Thiên Thủy Tụng": { c: "111010", n: ["Phụ Mẫu Dần Mộc (Ứng)","Tử Tôn Thìn Thổ","Huynh Đệ Ngọ Hỏa","Huynh Đệ Ngọ Hỏa (Thế)","Thê Tài Thân Kim","Tử Tôn Tuất Thổ"] },
+        "Thiên Hỏa Đồng Nhân": { c: "111101", n: ["Phụ Mẫu Mão Mộc","Tử Tôn Sửu Thổ","Quan Quỷ Hợi Thủy (Thế)","Huynh Đệ Ngọ Hỏa","Thê Tài Thân Kim","Tử Tôn Tuất Thổ (Ứng)"] }
+    }},
+    "Chan": { hanh: "Mộc", name: "Chấn", quẻ: {
+        "Chấn Vi Lôi": { c: "001001", n: ["Phụ Mẫu Tý Thủy","Huynh Đệ Dần Mộc","Thê Tài Thìn Thổ (Ứng)","Tử Tôn Ngọ Hỏa","Quan Quỷ Thân Kim","Thê Tài Tuất Thổ (Thế)"] },
+        "Lôi Địa Dự": { c: "001000", n: ["Thê Tài Mùi Thổ (Thế)","Tử Tôn Tỵ Hỏa","Huynh Đệ Mão Mộc","Tử Tôn Ngọ Hỏa (Ứng)","Quan Quỷ Thân Kim","Thê Tài Tuất Thổ"] },
+        "Lôi Thủy Giải": { c: "001010", n: ["Huynh Đệ Dần Mộc","Thê Tài Thìn Thổ (Thế)","Tử Tôn Ngọ Hỏa","Tử Tôn Ngọ Hỏa","Quan Quỷ Thân Kim (Ứng)","Thê Tài Tuất Thổ"] },
+        "Lôi Phong Hằng": { c: "001110", n: ["Thê Tài Sửu Thổ","Phụ Mẫu Hợi Thủy","Quan Quỷ Dậu Kim (Thế)","Tử Tôn Ngọ Hỏa","Quan Quỷ Thân Kim","Thê Tài Tuất Thổ (Ứng)"] },
+        "Địa Phong Thăng": { c: "000110", n: ["Thê Tài Sửu Thổ (Ứng)","Phụ Mẫu Hợi Thủy","Quan Quỷ Dậu Kim","Thê Tài Sửu Thổ (Thế)","Phụ Mẫu Hợi Thủy","Quan Quỷ Dậu Kim"] },
+        "Thủy Phong Tỉnh": { c: "010110", n: ["Thê Tài Sửu Thổ","Phụ Mẫu Hợi Thủy (Ứng)","Quan Quỷ Dậu Kim","Quan Quỷ Thân Kim","Thê Tài Tuất Thổ (Thế)","Phụ Mẫu Tý Thủy"] },
+        "Trạch Phong Đại Quá": { c: "011110", n: ["Thê Tài Sửu Thổ (Ứng)","Phụ Mẫu Hợi Thủy","Quan Quỷ Dậu Kim","Phụ Mẫu Hợi Thủy (Thế)","Quan Quỷ Dậu Kim","Thê Tài Mùi Thổ"] },
+        "Trạch Lôi Tùy": { c: "011001", n: ["Phụ Mẫu Tý Thủy","Huynh Đệ Dần Mộc","Thê Tài Thìn Thổ (Thế)","Phụ Mẫu Hợi Thủy","Quan Quỷ Dậu Kim","Thê Tài Mùi Thổ (Ứng)"] }
+    }},
+    "Ton": { hanh: "Mộc", name: "Tốn", quẻ: {
+        "Tốn Vi Phong": { c: "110110", n: ["Thê Tài Sửu Thổ","Phụ Mẫu Hợi Thủy","Quan Quỷ Dậu Kim (Ứng)","Thê Tài Mùi Thổ","Tử Tôn Tỵ Hỏa","Huynh Đệ Mão Mộc (Thế)"] },
+        "Phong Thiên Tiểu Súc": { c: "110111", n: ["Phụ Mẫu Tý Thủy (Thế)","Huynh Đệ Dần Mộc","Thê Tài Thìn Thổ","Thê Tài Mùi Thổ (Ứng)","Tử Tôn Tỵ Hỏa","Huynh Đệ Mão Mộc"] },
+        "Phong Hỏa Gia Nhân": { c: "110101", n: ["Huynh Đệ Mão Mộc","Thê Tài Sửu Thổ (Thế)","Phụ Mẫu Hợi Thủy","Thê Tài Mùi Thổ","Tử Tôn Tỵ Hỏa (Ứng)","Huynh Đệ Mão Mộc"] },
+        "Phong Lôi Ích": { c: "110001", n: ["Phụ Mẫu Tý Thủy","Huynh Đệ Dần Mộc","Thê Tài Thìn Thổ (Thế)","Thê Tài Mùi Thổ","Tử Tôn Tỵ Hỏa","Huynh Đệ Mão Mộc (Ứng)"] },
+        "Thiên Lôi Vô Vọng": { c: "111001", n: ["Phụ Mẫu Tý Thủy (Ứng)","Huynh Đệ Dần Mộc","Thê Tài Thìn Thổ","Tử Tôn Ngọ Hỏa (Thế)","Quan Quỷ Thân Kim","Thê Tài Tuất Thổ"] },
+        "Hỏa Lôi Phệ Hạp": { c: "101001", n: ["Phụ Mẫu Tý Thủy","Huynh Đệ Dần Mộc (Ứng)","Thê Tài Thìn Thổ","Quan Quỷ Dậu Kim","Thê Tài Mùi Thổ (Thế)","Tử Tôn Tỵ Hỏa"] },
+        "Sơn Lôi Di": { c: "100001", n: ["Phụ Mẫu Tý Thủy (Ứng)","Huynh Đệ Dần Mộc","Thê Tài Thìn Thổ","Thê Tài Tuất Thổ (Thế)","Phụ Mẫu Tý Thủy","Huynh Đệ Dần Mộc"] },
+        "Sơn Phong Cổ": { c: "100110", n: ["Thê Tài Sửu Thổ","Phụ Mẫu Hợi Thủy","Quan Quỷ Dậu Kim (Thế)","Thê Tài Tuất Thổ","Phụ Mẫu Tý Thủy","Huynh Đệ Dần Mộc (Ứng)"] }
+    }},
+    "Kham": { hanh: "Thủy", name: "Khảm", quẻ: {
+        "Khảm Vi Thủy": { c: "010010", n: ["Tử Tôn Dần Mộc","Quan Quỷ Thìn Thổ","Thê Tài Ngọ Hỏa (Ứng)","Phụ Mẫu Thân Kim","Quan Quỷ Tuất Thổ","Huynh Đệ Tý Thủy (Thế)"] },
+        "Thủy Trạch Tiết": { c: "010011", n: ["Thê Tài Tỵ Hỏa (Thế)","Tử Tôn Mão Mộc","Quan Quỷ Sửu Thổ","Phụ Mẫu Thân Kim (Ứng)","Quan Quỷ Tuất Thổ","Huynh Đệ Tý Thủy"] },
+        "Thủy Lôi Truân": { c: "010001", n: ["Huynh Đệ Tý Thủy","Tử Tôn Dần Mộc (Thế)","Quan Quỷ Thìn Thổ","Phụ Mẫu Thân Kim","Quan Quỷ Tuất Thổ (Ứng)","Huynh Đệ Tý Thủy"] },
+        "Thủy Hỏa Ký Tế": { c: "010101", n: ["Tử Tôn Mão Mộc","Quan Quỷ Sửu Thổ","Huynh Đệ Hợi Thủy (Thế)","Phụ Mẫu Thân Kim","Quan Quỷ Tuất Thổ","Huynh Đệ Tý Thủy (Ứng)"] },
+        "Trạch Hỏa Cách": { c: "011101", n: ["Tử Tôn Mão Mộc (Ứng)","Quan Quỷ Sửu Thổ","Huynh Đệ Hợi Thủy","Huynh Đệ Hợi Thủy (Thế)","Phụ Mẫu Dậu Kim","Quan Quỷ Mùi Thổ"] },
+        "Lôi Hỏa Phong": { c: "001101", n: ["Tử Tôn Mão Mộc","Quan Quỷ Sửu Thổ (Ứng)","Huynh Đệ Hợi Thủy","Thê Tài Ngọ Hỏa","Phụ Mẫu Thân Kim (Thế)","Quan Quỷ Tuất Thổ"] },
+        "Địa Hỏa Minh Di": { c: "000101", n: ["Tử Tôn Mão Mộc (Ứng)","Quan Quỷ Sửu Thổ","Huynh Đệ Hợi Thủy","Quan Quỷ Sửu Thổ (Thế)","Huynh Đệ Hợi Thủy","Phụ Mẫu Dậu Kim"] },
+        "Địa Thủy Sư": { c: "000010", n: ["Tử Tôn Thân Kim","Quan Quỷ Thìn Thổ","Thê Tài Ngọ Hỏa (Thế)","Quan Quỷ Sửu Thổ","Huynh Đệ Hợi Thủy","Phụ Mẫu Dậu Kim (Ứng)"] }
+    }},
+    "Can2": { hanh: "Thổ", name: "Cấn", quẻ: {
+        "Cấn Vi Sơn": { c: "100100", n: ["Huynh Đệ Thìn Thổ","Phụ Mẫu Ngọ Hỏa","Tử Tôn Thân Kim (Ứng)","Huynh Đệ Tuất Thổ","Thê Tài Tý Thủy","Quan Quỷ Dần Mộc (Thế)"] },
+        "Sơn Hỏa Bí": { c: "100101", n: ["Quan Quỷ Mão Mộc (Thế)","Huynh Đệ Sửu Thổ","Thê Tài Hợi Thủy","Huynh Đệ Tuất Thổ (Ứng)","Thê Tài Tý Thủy","Quan Quỷ Dần Mộc"] },
+        "Sơn Thiên Đại Súc": { c: "100111", n: ["Thê Tài Tý Thủy","Quan Quỷ Dần Mộc (Thế)","Huynh Đệ Thìn Thổ","Huynh Đệ Tuất Thổ","Thê Tài Tý Thủy (Ứng)","Quan Quỷ Dần Mộc"] },
+        "Sơn Trạch Tổn": { c: "100011", n: ["Phụ Mẫu Tỵ Hỏa","Quan Quỷ Mão Mộc","Huynh Đệ Sửu Thổ (Thế)","Huynh Đệ Tuất Thổ","Thê Tài Tý Thủy","Quan Quỷ Dần Mộc (Ứng)"] },
+        "Hỏa Trạch Khuê": { c: "101011", n: ["Phụ Mẫu Tỵ Hỏa (Ứng)","Quan Quỷ Mão Mộc","Huynh Đệ Sửu Thổ","Tử Tôn Dậu Kim (Thế)","Huynh Đệ Mùi Thổ","Phụ Mẫu Tỵ Hỏa"] },
+        "Thiên Trạch Lý": { c: "111011", n: ["Phụ Mẫu Tỵ Hỏa","Quan Quỷ Mão Mộc (Ứng)","Huynh Đệ Sửu Thổ","Phụ Mẫu Ngọ Hỏa","Tử Tôn Thân Kim (Thế)","Huynh Đệ Tuất Thổ"] },
+        "Phong Trạch Trung Phu": { c: "110011", n: ["Phụ Mẫu Tỵ Hỏa (Ứng)","Quan Quỷ Mão Mộc","Huynh Đệ Sửu Thổ","Huynh Đệ Mùi Thổ (Thế)","Phụ Mẫu Tỵ Hỏa","Quan Quỷ Mão Mộc"] },
+        "Phong Sơn Tiệm": { c: "110100", n: ["Huynh Đệ Thìn Thổ","Phụ Mẫu Ngọ Hỏa","Tử Tôn Thân Kim (Thế)","Huynh Đệ Mùi Thổ","Phụ Mẫu Tỵ Hỏa","Quan Quỷ Mão Mộc (Ứng)"] }
+    }},
+    "Khon": { hanh: "Thổ", name: "Khôn", quẻ: {
+        "Khôn Vi Địa": { c: "000000", n: ["Huynh Đệ Mùi Thổ","Phụ Mẫu Tỵ Hỏa","Quan Quỷ Mão Mộc (Ứng)","Huynh Đệ Sửu Thổ","Thê Tài Hợi Thủy","Tử Tôn Dậu Kim (Thế)"] },
+        "Địa Lôi Phục": { c: "000001", n: ["Thê Tài Tý Thủy (Thế)","Quan Quỷ Dần Mộc","Huynh Đệ Thìn Thổ","Huynh Đệ Sửu Thổ (Ứng)","Thê Tài Hợi Thủy","Tử Tôn Dậu Kim"] },
+        "Địa Trạch Lâm": { c: "000011", n: ["Phụ mẫu Tỵ Hỏa","Quan Quỷ Mão Mộc (Thế)","Huynh Đệ Sửu Thổ","Huynh Đệ Sửu Thổ","Thê Tài Hợi Thủy (Ứng)","Tử Tôn Dậu Kim"] },
+        "Địa Thiên Thái": { c: "000111", n: ["Thê Tài Tý Thủy","Quan Quỷ Dần Mộc","Huynh Đệ Thìn Thổ (Thế)","Huynh Đệ Sửu Thổ","Thê Tài Hợi Thủy","Tử Tôn Dậu Kim (Ứng)"] },
+        "Lôi Thiên Đại Tráng": { c: "001111", n: ["Thê Tài Tý Thủy (Ứng)","Quan Quỷ Dần Mộc","Huynh Đệ Thìn Thổ","Phụ Mẫu Ngọ Hỏa (Thế)","Tử Tôn Thân Kim","Huynh Đệ Tuất Thổ"] },
+        "Trạch Thiên Quải": { c: "011111", n: ["Thê Tài Tý Thủy","Quan Quỷ Dần Mộc (Ứng)","Huynh Đệ Thìn Thổ","Thê Tài Hợi Thủy","Tử Tôn Dậu Kim (Thế)","Huynh Đệ Mùi Thổ"] },
+        "Thủy Thiên Nhu": { c: "010111", n: ["Thê Tài Tý Thủy (Ứng)","Quan Quỷ Dần Mộc","Huynh Đệ Thìn Thổ","Tử Tôn Thân Kim (Thế)","Huynh Đệ Tuất Thổ","Thê Tài Tý Thủy"] },
+        "Thủy Địa Tỷ": { c: "010000", n: ["Huynh Đệ Mùi Thổ","Phụ Mẫu Tỵ Hỏa","Quan Quỷ Mão Mộc (Thế)","Tử Tôn Thân Kim","Huynh Đệ Tuất Thổ","Thê Tài Tý Thủy (Ứng)"] }
+    }}
+};
+
+let selectedDong = [];
+let bienQueGiam = null;
+
+function getChiHanh(fullString) {
+    let clean = fullString.replace(/\(Thế\)|\(Ứng\)/g, "").trim();
+    let words = clean.split(/\s+/);
+    if (words.length >= 2) {
+        return words[words.length - 2] + " " + words[words.length - 1];
+    }
+    return "";
+}
+
+function getHanh(napName) {
+    const hanhs = [
+        { std: "Kim",  alts: ["Kim"] },
+        { std: "Mộc",  alts: ["Mộc"] },
+        { std: "Thủy", alts: ["Thủy", "Thuỷ"] },
+        { std: "Hỏa",  alts: ["Hỏa", "Hoả"] },
+        { std: "Thổ",  alts: ["Thổ"] }
+    ];
+    for (let h of hanhs) {
+        for (let alt of h.alts) {
+            if (napName.includes(alt)) return h.std;
+        }
+    }
+    return "";
+}
+
+function getTheUngLabel(napString) {
+    if (napString.includes("(Thế)")) return " (Thế)";
+    if (napString.includes("(Ứng)")) return " (Ứng)";
+    return "";
+}
+
+function tinhLucThan(haoHanh, hoChuHanh) {
+    const sinh = { "Kim": "Thủy", "Thủy": "Mộc", "Mộc": "Hỏa", "Hỏa": "Thổ", "Thổ": "Kim" };
+    const khac = { "Kim": "Mộc", "Mộc": "Thổ", "Thổ": "Thủy", "Thủy": "Hỏa", "Hỏa": "Kim" };
+    if (haoHanh === hoChuHanh) return "Huynh Đệ";
+    if (sinh[haoHanh] === hoChuHanh) return "Phụ Mẫu";
+    if (sinh[hoChuHanh] === haoHanh) return "Tử Tôn";
+    if (khac[haoHanh] === hoChuHanh) return "Quan Quỷ";
+    if (khac[hoChuHanh] === haoHanh) return "Thê Tài";
+    return "";
+}
+
+function updateQueList() {
+    const cung = document.getElementById("selectCung").value;
+    const queSelect = document.getElementById("selectQue");
+    queSelect.innerHTML = '<option value="">-- Chọn quẻ --</option>';
+    if (cung && dataDich[cung]) {
+        Object.keys(dataDich[cung].quẻ).forEach(qName => {
+            let opt = document.createElement("option");
+            opt.value = qName; opt.text = qName;
+            queSelect.appendChild(opt);
+        });
+    }
+    processDich();
+}
+
+function toggleDong(num) {
+    const idx = selectedDong.indexOf(num);
+    if (idx > -1) {
+        selectedDong.splice(idx, 1);
+    } else {
+        if (selectedDong.length >= 4) {
+            const counter = document.getElementById("dongCounter");
+            counter.innerText = "Tối đa 4 hào động! Bỏ bớt hào trước khi chọn thêm.";
+            counter.classList.add("full");
+            setTimeout(updateDongCounter, 1800);
+            return;
+        }
+        selectedDong.push(num);
+    }
+    selectedDong.sort((a, b) => a - b);
+
+    const items = document.querySelectorAll('.dong-item');
+    items.forEach((item, i) => {
+        const haoThu = i + 1;
+        item.classList.remove('active');
+        item.innerHTML = `<span>Hào ${haoThu}</span>`;
+        const orderIdx = selectedDong.indexOf(haoThu);
+        if (orderIdx > -1) {
+            item.classList.add('active');
+            item.innerHTML += `<div class="dong-order">${orderIdx + 1}</div>`;
+        }
+    });
+
+    updateDongCounter();
+
+    // --- TỰ ĐỘNG ĐỒNG BỘ SANG KHỐI TỨ TRỊ & MODULES ---
+    const inputHaoDong = document.getElementById("mHaoDong");
+    if (inputHaoDong) {
+        inputHaoDong.value = selectedDong.join(",");
+    }
+
+    processDich();
+}
+
+function updateDongCounter() {
+    const counter = document.getElementById("dongCounter");
+    counter.classList.remove("full");
+    counter.innerText = `Đã chọn: ${selectedDong.length}/4 hào`;
+}
+
+function findQueByCode(code) {
+    for (let cungKey in dataDich) {
+        for (let qName in dataDich[cungKey].quẻ) {
+            if (dataDich[cungKey].quẻ[qName].c === code) {
+                return { name: qName, data: dataDich[cungKey].quẻ[qName], cung: dataDich[cungKey] };
+            }
+        }
+    }
+    return null;
+}
+
+function processDich() {
+    const cungKeyChu = document.getElementById("selectCung").value;
+    const qNameChu = document.getElementById("selectQue").value;
+
+    if (!cungKeyChu || !qNameChu) { 
+        document.getElementById("resultGrid").style.display = "none"; 
+        document.getElementById("btnCopy").style.display = "none";
+        return; 
+    }
+    const chuData = dataDich[cungKeyChu].quẻ[qNameChu];
+    const chuCung = dataDich[cungKeyChu];
+
+    renderQue("hexChu", "resNameChu", "resCungChu", qNameChu, chuData, chuCung, selectedDong);
+
+    if (selectedDong.length > 0) {
+        let chuCodeArr = chuData.c.split("");
+        selectedDong.forEach(haoThu => {
+            let bitIndex = 6 - haoThu;
+            chuCodeArr[bitIndex] = chuCodeArr[bitIndex] === "1" ? "0" : "1";
+        });
+        let bienCode = chuCodeArr.join("");
+        bienQueGiam = findQueByCode(bienCode);
+
+        if (bienQueGiam) {
+            document.getElementById("cardBien").style.display = "block";
+            renderQue("hexBien", "resNameBien", "resCungBien", bienQueGiam.name, bienQueGiam.data, bienQueGiam.cung, [], chuData, chuCung);
+        }
+    } else {
+        document.getElementById("cardBien").style.display = "none";
+        bienQueGiam = null;
+    }
+    document.getElementById("resultGrid").style.display = "grid";
+    document.getElementById("btnCopy").style.display = "block";
+}
+
+function renderQue(containerId, nameId, cungId, name, que, cung, dongHaoArr, dataChu = null, cungChu = null) {
+    document.getElementById(nameId).innerText = name;
+    document.getElementById(cungId).innerText = `HỌ ${cung.name.toUpperCase()} - CUNG ${cung.hanh}`;
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
+
+    const isQueBien = dataChu !== null;
+    const thuongDong = selectedDong.some(h => h >= 4);
+    const haDong = selectedDong.some(h => h <= 3);
+
+    for (let i = 0; i < 6; i++) {
+        const haoThu = i + 1;
+        const row = document.createElement("div");
+        row.className = "hao-row";
+        const isYang = que.c[5 - i] === "1";
+
+        let displayNap = "";
+        if (isQueBien) {
+            const isHaoThuong = (haoThu >= 4);
+            const theUngLabel = getTheUngLabel(dataChu.n[i]);
+
+            if ((isHaoThuong && thuongDong) || (!isHaoThuong && haDong)) {
+                let napGocBien = que.n[i];
+                let chiHanh = getChiHanh(napGocBien);
+                let lucThanMoi = tinhLucThan(getHanh(chiHanh), cungChu.hanh);
+                displayNap = lucThanMoi + " " + chiHanh + theUngLabel;
+            } else {
+                displayNap = dataChu.n[i];
+            }
+        } else {
+            displayNap = que.n[i];
+        }
+
+        let label = ""; let labelClass = "";
+        let cleanNap = displayNap.replace("(Thế)", "").replace("(Ứng)", "").trim();
+        if (displayNap.includes("(Thế)")) { label = "Thế"; labelClass = "label-the"; }
+        else if (displayNap.includes("(Ứng)")) { label = "Ứng"; labelClass = "label-ung"; }
+
+        let symbol = "";
+        if (dongHaoArr.includes(haoThu)) {
+            symbol = isYang ? '<span class="symbol-dong is-dong-yang">O</span>' : '<span class="symbol-dong is-dong-yin">X</span>';
+        }
+
+        row.innerHTML = `
+            <div class="nap-giap">${cleanNap}</div>
+            <div class="line-box">
+                ${symbol}
+                ${isYang ? '<div class="line-yang"></div>' : '<div class="line-yin"></div>'}
+            </div>
+            <div class="the-ung ${labelClass}">${label}</div>
+        `;
+        container.appendChild(row);
+    }
+}
+
+function copyToClipboard() {
+    const cungChuKey = document.getElementById("selectCung").value;
+    const nameChu = document.getElementById("selectQue").value;
+    const chuData = dataDich[cungChuKey].quẻ[nameChu];
+    const cungChu = dataDich[cungChuKey];
+
+    let text = `Quẻ Chủ: ${nameChu} (Họ ${cungChu.name})\n`;
+    for (let i = 5; i >= 0; i--) {
+        let n = chuData.n[i];
+        let line = `Hào ${i + 1}: ${n}`;
+        if (selectedDong.includes(i + 1)) line += " [Động]";
+        text += line + "\n";
+    }
+
+    if (bienQueGiam) {
+        text += `\nQuẻ Biến: ${bienQueGiam.name} (Tính Lục Thân theo Họ ${cungChu.name})\n`;
+        const thuongDong = selectedDong.some(h => h >= 4);
+        const haDong = selectedDong.some(h => h <= 3);
+        for (let i = 5; i >= 0; i--) {
+            let haoThu = i + 1;
+            let displayNap = "";
+            const isHaoThuong = (haoThu >= 4);
+            const theUngLabel = getTheUngLabel(chuData.n[i]);
+            if ((isHaoThuong && thuongDong) || (!isHaoThuong && haDong)) {
+                let chiHanh = getChiHanh(bienQueGiam.data.n[i]);
+                displayNap = tinhLucThan(getHanh(chiHanh), cungChu.hanh) + " " + chiHanh + theUngLabel;
+            } else {
+                displayNap = chuData.n[i];
+            }
+            text += `Hào ${haoThu}: ${displayNap}\n`;
+        }
+    }
+
+    function showSuccess() {
+        const btn = document.getElementById("btnCopy");
+        document.getElementById("fallbackBox").style.display = "none";
+        btn.innerText = "✅ ĐÃ SAO CHÉP!";
+        setTimeout(() => { btn.innerText = "📋 SAO CHÉP KẾT QUẢ"; }, 2000);
+    }
+
+    function showFallback() {
+        const box = document.getElementById("fallbackBox");
+        const ta = document.getElementById("fallbackText");
+        ta.value = text;
+        box.style.display = "block";
+        ta.focus();
+        ta.select();
+    }
+
+    function tryExecCommandCopy() {
+        try {
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.position = "fixed";
+            ta.style.left = "-9999px";
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            const ok = document.execCommand("copy");
+            document.body.removeChild(ta);
+            return ok;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(showSuccess).catch(() => {
+            if (tryExecCommandCopy()) showSuccess();
+            else showFallback();
+        });
+    } else if (tryExecCommandCopy()) {
+        showSuccess();
+    } else {
+        showFallback();
+    }
+}
+
+// ===================== TRƯỜNG SINH & VƯỢNG SUY =====================
+const CHI_LIST = ["Tý","Sửu","Dần","Mão","Thìn","Tỵ","Ngọ","Mùi","Thân","Dậu","Tuất","Hợi"];
+
+const TS_GROUPS = {
+    "Dần": "Moc", "Mão": "Moc",
+    "Tỵ": "Hoa", "Ngọ": "Hoa",
+    "Thân": "Kim", "Dậu": "Kim",
+    "Tý": "ThuyTho", "Hợi": "ThuyTho", "Sửu": "ThuyTho", "Thìn": "ThuyTho", "Mùi": "ThuyTho", "Tuất": "ThuyTho"
+};
+
+const TS_STAGE_BY_CHI = {
+    Moc: { "Hợi":"Trường Sinh","Tý":"Mộc Dục","Sửu":"Quan Đới","Dần":"Lâm Quan","Mão":"Đế Vượng","Thìn":"Suy","Tỵ":"Bệnh","Ngọ":"Tử","Mùi":"Mộ","Thân":"Tuyệt","Dậu":"Thai","Tuất":"Dưỡng" },
+    Hoa: { "Dần":"Trường Sinh","Mão":"Mộc Dục","Thìn":"Quan Đới","Tỵ":"Lâm Quan","Ngọ":"Đế Vượng","Mùi":"Suy","Thân":"Bệnh","Dậu":"Tử","Tuất":"Mộ","Hợi":"Tuyệt","Tý":"Thai","Sửu":"Dưỡng" },
+    Kim: { "Tỵ":"Trường Sinh","Ngọ":"Mộc Dục","Mùi":"Quan Đới","Thân":"Lâm Quan","Dậu":"Đế Vượng","Tuất":"Suy","Hợi":"Bệnh","Tý":"Tử","Sửu":"Mộ","Dần":"Tuyệt","Mão":"Thai","Thìn":"Dưỡng" },
+    ThuyTho: { "Thân":"Trường Sinh","Dậu":"Mộc Dục","Tuất":"Quan Đới","Hợi":"Lâm Quan","Tý":"Đế Vượng","Sửu":"Suy","Dần":"Bệnh","Mão":"Tử","Thìn":"Mộ","Tỵ":"Tuyệt","Ngọ":"Thai","Mùi":"Dưỡng" }
+};
+
+function getTruongSinh(haoChi, relChi) {
+    const group = TS_GROUPS[haoChi];
+    return TS_STAGE_BY_CHI[group][relChi];
+}
+
+const VUONG_SUY_TABLE = {
+    "Tý": { "Tý":"Vượng, Trực Nhật/Trực Nguyệt", "Hợi":"Vượng, Lâm Nhật/Lâm Nguyệt", "Sửu":"Hợp, Vượng nhẹ, Vượng bó buộc", "Dần":"Hưu", "Mão":"Hưu + Hình", "Thìn":"Mộ + Suy", "Tỵ":"Tù", "Ngọ":"Tù + Xung Tán", "Mùi":"Tử + Hại", "Thân":"Tướng", "Dậu":"Tướng", "Tuất":"Tử" },
+    "Sửu": { "Tý":"Vượng + Hợp", "Hợi":"Tù", "Sửu":"Trực Nhật/Trực Nguyệt, Vượng", "Dần":"Tử", "Mão":"Tử", "Thìn":"Vượng", "Tỵ":"Tướng", "Ngọ":"Tướng + Hại", "Mùi":"Vượng + Xung", "Thân":"Hưu", "Dậu":"Hưu", "Tuất":"Vượng" },
+    "Dần": { "Tý":"Tướng", "Hợi":"Tướng + Hợp", "Sửu":"Tù", "Dần":"Vượng, Trực Nhật/Trực Nguyệt", "Mão":"Vượng, Lâm Nhật/Lâm Nguyệt", "Thìn":"Tù", "Tỵ":"Hưu + Hình", "Ngọ":"Hưu", "Mùi":"Tù + Mộ", "Thân":"Tử + Xung", "Dậu":"Tử", "Tuất":"Tù" },
+    "Mão": { "Tý":"Tướng + Hình", "Hợi":"Tướng", "Sửu":"Tù", "Dần":"Vượng, Lâm Nhật/Lâm Nguyệt", "Mão":"Vượng, Trực Nhật/Trực Nguyệt", "Thìn":"Tù", "Tỵ":"Hưu", "Ngọ":"Hưu", "Mùi":"Tù + Mộ", "Thân":"Tử", "Dậu":"Tử + Xung", "Tuất":"Vượng + Hợp" },
+    "Thìn": { "Tý":"Vượng", "Hợi":"Tù", "Sửu":"Vượng", "Dần":"Tử", "Mão":"Tử", "Thìn":"Vượng, Trực Nhật/Trực Nguyệt", "Tỵ":"Tướng", "Ngọ":"Tướng", "Mùi":"Vượng", "Thân":"Hưu", "Dậu":"Hưu", "Tuất":"Vượng + Xung" },
+    "Tỵ": { "Tý":"Tử", "Hợi":"Tử + Xung", "Sửu":"Hưu", "Dần":"Vượng + Hình", "Mão":"Vượng", "Thìn":"Hưu", "Tỵ":"Vượng, Trực Nhật/Trực Nguyệt", "Ngọ":"Vượng, Lâm Nhật/Lâm Nguyệt", "Mùi":"Hưu", "Thân":"Tù + Hình", "Dậu":"Tù", "Tuất":"Hưu + Mộ" },
+    "Ngọ": { "Tý":"Tử + Xung", "Hợi":"Tử", "Sửu":"Hưu + Hại", "Dần":"Tướng", "Mão":"Tướng", "Thìn":"Hưu", "Tỵ":"Vượng, Lâm Nhật/Lâm Nguyệt", "Ngọ":"Vượng, Trực Nhật/Trực Nguyệt", "Mùi":"Hưu + Hợp", "Thân":"Tù", "Dậu":"Tù", "Tuất":"Hưu + Mộ" },
+    "Mùi": { "Tý":"Vượng + Hại", "Hợi":"Tù", "Sửu":"Vượng + Xung", "Dần":"Tử", "Mão":"Tử", "Thìn":"Vượng", "Tỵ":"Tướng", "Ngọ":"Tướng + Hợp", "Mùi":"Vượng, Trực Nhật/Trực Nguyệt", "Thân":"Hưu", "Dậu":"Hưu", "Tuất":"Vượng" },
+    "Thân": { "Tý":"Hưu", "Hợi":"Hưu + Hại", "Sửu":"Vượng + Mộ", "Dần":"Tử + Xung", "Mão":"Tử", "Thìn":"Tướng", "Tỵ":"Tử + Hình", "Ngọ":"Tử", "Mùi":"Tướng", "Thân":"Vượng, Trực Nhật/Trực Nguyệt", "Dậu":"Vượng, Lâm Nhật/Lâm Nguyệt", "Tuất":"Tướng" },
+    "Dậu": { "Tý":"Hưu + Phá", "Hợi":"Hưu", "Sửu":"Vượng + Mộ", "Dần":"Tù", "Mão":"Tù + Xung", "Thìn":"Vượng + Hợp", "Tỵ":"Tử", "Ngọ":"Tử", "Mùi":"Vượng", "Thân":"Vượng, Lâm Nhật/Lâm Nguyệt", "Dậu":"Vượng, Trực Nhật/Trực Nguyệt", "Tuất":"Tướng" },
+    "Tuất": { "Tý":"Vượng", "Hợi":"Tù", "Sửu":"Tướng", "Dần":"Tử", "Mão":"Tử + Hợp", "Thìn":"Vượng + Xung", "Tỵ":"Tướng", "Ngọ":"Tướng", "Mùi":"Vượng", "Thân":"Hưu", "Dậu":"Hưu", "Tuất":"Vượng, Trực Nhật/Trực Nguyệt" },
+    "Hợi": { "Tý":"Vượng, Lâm Nhật/Lâm Nguyệt", "Hợi":"Vượng, Trực Nhật/Trực Nguyệt", "Sửu":"Tử", "Dần":"Hưu + Hợp", "Mão":"Hưu", "Thìn":"Tử + Mộ", "Tỵ":"Tù + Xung", "Ngọ":"Tù", "Mùi":"Tử", "Thân":"Tướng + Hại", "Dậu":"Tướng", "Tuất":"Tử" }
+};
+
+function resolveVuongSuy(raw, ctx) {
+    let s = raw;
+    const variantOf = (label) => (ctx === "Nhật" ? label + " Nhật" : label + " Nguyệt");
+
+    if (s.includes("Trực Nhật/Trực Nguyệt")) {
+        const variant = variantOf("Trực");
+        let rest = s.replace("Trực Nhật/Trực Nguyệt", "").trim();
+        rest = rest.replace(/^,|,$/g, "").trim();
+        s = rest ? `${rest} + ${variant}` : variant;
+    } else if (s.includes("Lâm Nhật/Lâm Nguyệt")) {
+        const variant = variantOf("Lâm");
+        let rest = s.replace("Lâm Nhật/Lâm Nguyệt", "").trim();
+        rest = rest.replace(/^,|,$/g, "").trim();
+        s = rest ? `${rest} + ${variant}` : variant;
+    }
+    return s;
+}
+
+function populateChiSelects() {
+    const ids = ["tsNhat", "tsNguyet", "tsHao1", "tsHao2", "tsHao3", "tsHao4", "tsHao5", "tsHao6"];
+    ids.forEach(id => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '<option value="">-- Chọn --</option>';
+        CHI_LIST.forEach(chi => {
+            const opt = document.createElement("option");
+            opt.value = chi; opt.text = chi;
+            sel.appendChild(opt);
+        });
+    });
+}
+
+function autoFillFromQueChu() {
+    const cungKeyChu = document.getElementById("selectCung").value;
+    const qNameChu = document.getElementById("selectQue").value;
+    if (!cungKeyChu || !qNameChu) {
+        alert("Vui lòng chọn Họ Quẻ và Tên Quẻ Chủ ở phần trên trước.");
+        return;
+    }
+    const chuData = dataDich[cungKeyChu].quẻ[qNameChu];
+    for (let h = 1; h <= 6; h++) {
+        const i = h - 1;
+        const chiHanh = getChiHanh(chuData.n[i]);
+        const chi = chiHanh.split(" ")[0];
+        document.getElementById("tsHao" + h).value = chi;
+    }
+}
+
+function tinhTruongSinhVuongSuy() {
+    const nhat = document.getElementById("tsNhat").value;
+    const nguyet = document.getElementById("tsNguyet").value;
+    const haoChi = {};
+    let thieuHao = false;
+    for (let h = 1; h <= 6; h++) {
+        const v = document.getElementById("tsHao" + h).value;
+        if (!v) thieuHao = true;
+        haoChi[h] = v;
+    }
+
+    const outputEl = document.getElementById("tsOutput");
+    const copyBtn = document.getElementById("tsBtnCopy");
+
+    if (!nhat || !nguyet || thieuHao) {
+        outputEl.value = "Vui lòng chọn đầy đủ Nhật, Nguyệt và địa chi cho cả 6 hào.";
+        outputEl.style.display = "block";
+        copyBtn.style.display = "none";
+        return;
+    }
+
+    let text = "*** Thông tin Trường Sinh :\n";
+    text += `Nhật : ${nhat}\n`;
+    for (let h = 6; h >= 1; h--) {
+        const chi = haoChi[h];
+        text += `Hào ${h} : ${chi} ${getTruongSinh(chi, nhat)} ở Nhật ${nhat}.\n`;
+    }
+    text += `\nNguyệt : ${nguyet}\n`;
+    for (let h = 6; h >= 1; h--) {
+        const chi = haoChi[h];
+        text += `Hào ${h} : ${chi} ${getTruongSinh(chi, nguyet)} ở Nguyệt ${nguyet}.\n`;
+    }
+
+    text += "\n*** Thông tin Vượng Suy theo bảng Vượng Suy :\n\n";
+    text += `Nhật : ${nhat}\n`;
+    for (let h = 6; h >= 1; h--) {
+        const chi = haoChi[h];
+        const status = resolveVuongSuy(VUONG_SUY_TABLE[chi][nhat], "Nhật");
+        text += `Hào ${h} : ${chi} ${status} ở Nhật ${nhat}.\n`;
+    }
+    text += `\nNguyệt : ${nguyet}\n`;
+    for (let h = 6; h >= 1; h--) {
+        const chi = haoChi[h];
+        const status = resolveVuongSuy(VUONG_SUY_TABLE[chi][nguyet], "Nguyệt");
+        text += `Hào ${h} : ${chi} ${status} ở Nguyệt ${nguyet}.\n`;
+    }
+
+    const chiHaoBien = layDiaChiHaoBienTheoDong();
+    const cacHaoDong = Object.keys(chiHaoBien).map(Number).sort((a, b) => b - a);
+
+    if (cacHaoDong.length > 0) {
+        text += "\n*** Thông tin Trường Sinh (HÀO BIẾN, chỉ các hào Động) :\n";
+        text += `Nhật : ${nhat}\n`;
+        cacHaoDong.forEach(h => {
+            const chi = chiHaoBien[h];
+            text += `Hào ${h} (Biến) : ${chi} ${getTruongSinh(chi, nhat)} ở Nhật ${nhat}.\n`;
+        });
+        text += `\nNguyệt : ${nguyet}\n`;
+        cacHaoDong.forEach(h => {
+            const chi = chiHaoBien[h];
+            text += `Hào ${h} (Biến) : ${chi} ${getTruongSinh(chi, nguyet)} ở Nguyệt ${nguyet}.\n`;
+        });
+
+        text += "\n*** Thông tin Vượng Suy (HÀO BIẾN, chỉ các hào Động) theo bảng Vượng Suy :\n\n";
+        text += `Nhật : ${nhat}\n`;
+        cacHaoDong.forEach(h => {
+            const chi = chiHaoBien[h];
+            const status = resolveVuongSuy(VUONG_SUY_TABLE[chi][nhat], "Nhật");
+            text += `Hào ${h} (Biến) : ${chi} ${status} ở Nhật ${nhat}.\n`;
+        });
+        text += `\nNguyệt : ${nguyet}\n`;
+        cacHaoDong.forEach(h => {
+            const chi = chiHaoBien[h];
+            const status = resolveVuongSuy(VUONG_SUY_TABLE[chi][nguyet], "Nguyệt");
+            text += `Hào ${h} (Biến) : ${chi} ${status} ở Nguyệt ${nguyet}.\n`;
+        });
+    } else {
+        text += "\n*** Quẻ tĩnh (không có Hào Động) -> không có Hào Biến cần tính Trường Sinh/Vượng Suy.\n";
+    }
+
+    outputEl.value = text;
+    outputEl.style.display = "block";
+    copyBtn.style.display = "block";
+}
+
+function layDiaChiHaoBienTheoDong() {
+    const ketQua = {};
+    if (!bienQueGiam || !bienQueGiam.data) return ketQua;
+    selectedDong.forEach(haoSo => {
+        const chiHanh = getChiHanh(bienQueGiam.data.n[haoSo - 1]);
+        const chi = chiHanh.split(" ")[0];
+        if (chi) ketQua[haoSo] = chi;
+    });
+    return ketQua;
+}
+
+function copyTS() {
+    const output = document.getElementById("tsOutput");
+    const text = output.value;
+    if (!text) return;
+
+    function showSuccess() {
+        const btn = document.getElementById("tsBtnCopy");
+        btn.innerText = "✅ ĐÃ SAO CHÉP!";
+        setTimeout(() => { btn.innerText = "📋 SAO CHÉP KẾT QUẢ TRƯỜNG SINH"; }, 2000);
+    }
+    function tryExecCommandCopy() {
+        try {
+            output.focus();
+            output.select();
+            return document.execCommand("copy");
+        } catch (e) {
+            return false;
+        }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(showSuccess).catch(() => {
+            if (tryExecCommandCopy()) showSuccess();
+            else {
+                output.focus(); output.select();
+                alert("Không tự sao chép được. Văn bản đã được chọn sẵn ở ô phía trên — bấm Ctrl+C hoặc giữ để copy thủ công.");
+            }
+        });
+    } else if (tryExecCommandCopy()) {
+        showSuccess();
+    } else {
+        output.focus(); output.select();
+        alert("Không tự sao chép được. Văn bản đã được chọn sẵn ở ô phía trên — bấm Ctrl+C hoặc giữ để copy thủ công.");
+    }
+}
+
+// ================= TỨ TRỊ: THỜI - NHẬT - NGUYỆT - THÁI TUẾ - TUẦN KHÔNG - HÀO ĐỘNG =================
+const CAN_DUONG = ["Giáp", "Bính", "Mậu", "Canh", "Nhâm"];
+const CAN_AM    = ["Ất", "Đinh", "Kỷ", "Tân", "Quý"];
+
+const CHI_DUONG = ["Tý", "Dần", "Thìn", "Ngọ", "Thân", "Tuất"];
+const CHI_AM    = ["Sửu", "Mão", "Tỵ", "Mùi", "Dậu", "Hợi"];
+
+const CHI_SHORT_MAP = [
+    { keys: ["ty", "tý", "tỵ"], values: ["Tý", "Tỵ"] },
+    { keys: ["th", "thìn", "thân"], values: ["Thìn", "Thân"] },
+    { keys: ["tu", "tuất"], values: ["Tuất"] },
+    { keys: ["ng", "ngọ"], values: ["Ngọ"] },
+    { keys: ["sử", "sửu"], values: ["Sửu"] },
+    { keys: ["mã", "mão"], values: ["Mão"] },
+    { keys: ["mù", "mùi"], values: ["Mùi"] },
+    { keys: ["dầ", "dần"], values: ["Dần"] },
+    { keys: ["dâ", "dậu"], values: ["Dậu"] },
+    { keys: ["hợ", "hợi"], values: ["Hợi"] }
+];
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.input-suggest-box')) {
+        document.querySelectorAll('.suggestions-list').forEach(box => box.style.display = 'none');
+    }
+});
+
+function handleSuggestGanChi(inputEl, sugId) {
+    const val = inputEl.value.trim().toLowerCase();
+    const sugBox = document.getElementById(sugId);
+    sugBox.innerHTML = '';
+
+    if (!val) {
+        sugBox.style.display = 'none';
+        return;
+    }
+
+    let results = [];
+
+    CAN_DUONG.forEach(can => {
+        if (can.toLowerCase().startsWith(val)) {
+            CHI_DUONG.forEach(chi => results.push(`${can} ${chi}`));
+        }
+    });
+
+    CAN_AM.forEach(can => {
+        if (can.toLowerCase().startsWith(val)) {
+            CHI_AM.forEach(chi => results.push(`${can} ${chi}`));
+        }
+    });
+
+    if (results.length > 0) {
+        results.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'suggestion-item';
+            div.innerText = item;
+            div.onclick = function() {
+                inputEl.value = item;
+                sugBox.style.display = 'none';
+            };
+            sugBox.appendChild(div);
+        });
+        sugBox.style.display = 'block';
+    } else {
+        sugBox.style.display = 'none';
+    }
+}
+
+function handleSuggestChiShort(inputEl, sugId) {
+    const val = inputEl.value.trim().toLowerCase();
+    const sugBox = document.getElementById(sugId);
+    sugBox.innerHTML = '';
+
+    if (val.length < 2) {
+        sugBox.style.display = 'none';
+        return;
+    }
+
+    let matchedChi = new Set();
+    CHI_SHORT_MAP.forEach(item => {
+        item.keys.forEach(k => {
+            if (k.startsWith(val) || val.startsWith(k)) {
+                item.values.forEach(v => matchedChi.add(v));
+            }
+        });
+    });
+
+    if (matchedChi.size > 0) {
+        matchedChi.forEach(chi => {
+            const div = document.createElement('div');
+            div.className = 'suggestion-item';
+            div.innerText = chi;
+            div.onclick = function() {
+                inputEl.value = chi;
+                sugBox.style.display = 'none';
+            };
+            sugBox.appendChild(div);
+        });
+        sugBox.style.display = 'block';
+    } else {
+        sugBox.style.display = 'none';
+    }
+}
+
+function parseHaoDongInput(str) {
+    if (!str || !str.trim()) return [];
+    let parts = str.split(/[,;\s]+/).map(p => parseInt(p.trim())).filter(n => !isNaN(n) && n >= 1 && n <= 6);
+    return [...new Set(parts)].sort((a, b) => a - b);
+}
+
+function processModuleLogic() {
+    const thoi = document.getElementById('mThoi').value.trim();
+    const nhat = document.getElementById('mNhat').value.trim();
+    const nguyet = document.getElementById('mNguyet').value.trim();
+    const thaiTue = document.getElementById('mThaiTue').value.trim();
+    const tuanKhong = document.getElementById('mTuanKhong').value.trim();
+    let haoDongStr = document.getElementById('mHaoDong').value.trim();
+
+    // Nếu ô mHaoDong trống nhưng selectedDong từ Chặng 1 đã có, tự lấy selectedDong
+    if (!haoDongStr && typeof selectedDong !== 'undefined' && selectedDong.length > 0) {
+        haoDongStr = selectedDong.join(",");
+        document.getElementById('mHaoDong').value = haoDongStr;
+    }
+
+    const outputEl = document.getElementById('mOutput');
+
+    if (!thoi || !nhat || !nguyet || !thaiTue) {
+        alert("Vui lòng nhập đầy đủ thông tin: Thời, Nhật Thần, Nguyệt Lệnh và Thái Tuế!");
+        return;
+    }
+
+    const listHaoDong = parseHaoDongInput(haoDongStr);
+
+    let resText = `=== DỮ LIỆU ĐẦU VÀO ĐÃ ĐƯỢC XỬ LÝ ===\n`;
+    resText += `• Thời gian (Can Chi) : ${thoi}\n`;
+    resText += `• Nhật Thần            : ${nhat}\n`;
+    resText += `• Nguyệt Lệnh          : ${nguyet}\n`;
+    resText += `• Thái Tuế             : ${thaiTue}\n`;
+    resText += `• Tuần Không           : ${tuanKhong || 'Không có'}\n`;
+
+    if (listHaoDong.length === 0) {
+        resText += `• Trạng thái Quẻ       : QUẺ TĨNH (Không có hào động)\n`;
+    } else {
+        resText += `• Trạng thái Quẻ       : QUẺ ĐỘNG\n`;
+        resText += `• Các Hào Động         : Hào ${listHaoDong.join(', Hào ')}\n`;
+    }
+
+    resText += `\n=== BẮT ĐẦU KẾT NỐI VỚI THUẬT TOÁN TRAINING ===\n`;
+    resText += `-> Đã xác thực Can Chi Dương / Âm khớp logic thành công.\n`;
+    resText += `-> Dữ liệu đã sẵn sàng để chèn trực tiếp vào hệ thống Lục Hào.`;
+
+    outputEl.value = resText;
+    outputEl.style.display = 'block';
+
+    // Đồng bộ lại selectedDong và vẽ lại quẻ biến
+    if (typeof selectedDong !== 'undefined') {
+        selectedDong = listHaoDong;
+        if (typeof updateDongCounter === 'function') updateDongCounter();
+        if (typeof processDich === 'function') processDich();
+    }
+}
+
+function tinhCanChiTuDuongLich() {
+    const gioChi = document.getElementById('lichGioChi').value;
+    const ngay = parseInt(document.getElementById('lichNgay').value);
+    const thang = parseInt(document.getElementById('lichThang').value);
+    const nam = parseInt(document.getElementById('lichNam').value);
+
+    if (!gioChi || !ngay || !thang || !nam) {
+        alert("Vui lòng chọn Giờ và nhập đủ Ngày/Tháng/Năm Dương Lịch.");
+        return;
+    }
+    if (typeof NL_getDayContext !== "function") {
+        alert("Chưa nạp được calendar-core.js (hoặc thư viện âm lịch CDN đi kèm) — kiểm tra lại 2 thẻ <script> đã thêm vào total.html và đảm bảo chúng nạp TRƯỚC khi bấm nút này.");
+        return;
+    }
+
+    let ctx;
+    try {
+        ctx = NL_getDayContext(nam, thang, ngay, gioChi);
+    } catch (e) {
+        alert("Lỗi khi tính Can Chi từ Dương Lịch: " + e.message);
+        return;
+    }
+
+    if (!ctx || !ctx.socVong || !ctx.socVong.canChiNgay) {
+        alert("Không đọc được Ngày Âm Lịch cho ngày này (kiểm tra lại Ngày/Tháng/Năm đã nhập có hợp lệ không).");
+        return;
+    }
+
+    document.getElementById('mThoi').value = (ctx.gio && ctx.gio.canChi) ? ctx.gio.canChi : '';
+    document.getElementById('mNhat').value = ctx.socVong.canChiNgay;
+
+    if (ctx.tietKhi && ctx.tietKhi.canChiThang && ctx.tietKhi.canChiNam) {
+        document.getElementById('mNguyet').value = ctx.tietKhi.canChiThang;
+        document.getElementById('mThaiTue').value = ctx.tietKhi.canChiNam;
+    } else {
+        document.getElementById('mNguyet').value = '';
+        document.getElementById('mThaiTue').value = '';
+        alert("Đã điền Giờ + Nhật. Riêng Tháng/Năm ngoài phạm vi dữ liệu Tiết Khí (2023–2046) của calendar-core.js nên chưa tự suy được — vui lòng tự gõ tay 2 ô Nguyệt Lệnh / Thái Tuế bên dưới.");
+    }
+}
+
+/* KHUNG NẠP MODULE RỜI (m01.js ... m60.js) */
+function moduleSlot(html) {
+    const div = document.createElement("div");
+    div.className = "box module-container";
+    div.innerHTML = html;
+    document.getElementById("module-slots").appendChild(div);
+    return div;
+}
+
+populateChiSelects();
+</script>
+
+<!-- Thư viện Âm Lịch & Calendar Core -->
+<script src="https://cdn.jsdelivr.net/npm/@nghiavuive/lunar_date_vi@latest/dist/index.umd.js"></script>
+<script src="calendar-core.js"></script>
+<!-- thư viện lịch âm → calendar-core.js → mtrachcat.js -->
+<script src="mtrachcat.js"></script>
+<!-- DANH SÁCH MODULE RỜI NẠP TỰ ĐỘNG -->
+<script src="mchienluoc.js" defer></script>
+<script src="m01.js" defer></script>
+<script src="m02.js" defer></script>
+<script src="m03.js" defer></script>
+<script src="m04.js" defer></script>
+<script src="m05.js" defer></script>
+<script src="quedon.js" defer></script>
+<script src="quetuong.js" defer></script>
+<script src="tuongdonplus.js" defer></script>
+<script src="m06.js" defer></script>
+<script src="m07.js" defer></script>
+<script src="m08.js" defer></script>
+<script src="m09.js" defer></script>
+<script src="m10.js" defer></script>
+<script src="m11.js" defer></script>
+<script src="m12.js" defer></script>
+<script src="m13.js" defer></script>
+<script src="m14.js" defer></script>
+<script src="m15.js" defer></script>
+<script src="m16.js" defer></script>
+<script src="m17.js" defer></script>
+<script src="m18.js" defer></script>
+<script src="m19.js" defer></script>
+<script src="m20.js" defer></script>
+<script src="m21.js" defer></script>
+<script src="m22.js" defer></script>
+<script src="m23.js" defer></script>
+<script src="m24.js" defer></script>
+<script src="m25.js" defer></script>
+<script src="m26.js" defer></script>
+<script src="m27.js" defer></script>
+<script src="m28.js" defer></script>
+<script src="m29.js" defer></script>
+<script src="m30.js" defer></script>
+<script src="m31.js" defer></script>
+<script src="m32.js" defer></script>
+<script src="m33.js" defer></script>
+<script src="m34.js" defer></script>
+<script src="m35.js" defer></script>
+<script src="m36.js" defer></script>
+<script src="m37.js" defer></script>
+<script src="m38.js" defer></script>
+<script src="m39.js" defer></script>
+<script src="m40.js" defer></script>
+<script src="m41.js" defer></script>
+<script src="m42.js" defer></script>
+<script src="m43.js" defer></script>
+<script src="m44.js" defer></script>
+<script src="m45.js" defer></script>
+<script src="m46.js" defer></script>
+<script src="m47.js" defer></script>
+<script src="m48.js" defer></script>
+<script src="m49.js" defer></script>
+<script src="m50.js" defer></script>
+<script src="m51.js" defer></script>
+<script src="m52.js" defer></script>
+<script src="m53.js" defer></script>
+<script src="m54.js" defer></script>
+<script src="m55.js" defer></script>
+<script src="m56.js" defer></script>
+<script src="m57.js" defer></script>
+<script src="m58.js" defer></script>
+<script src="m59.js" defer></script>
+<script src="m60.js" defer></script>
+</body>
+</html>
