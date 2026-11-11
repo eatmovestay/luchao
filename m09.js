@@ -1,10 +1,10 @@
 /**
  * Module m09.js: Bộ Lọc Chiến Lược Ngũ Linh / Lục Hào Cổ Pháp
- * Đóng vai trò Bộ Điều Hướng (Routing Engine):
- * 1. Nhận mốc thời gian A -> B.
- * 2. Gọi calendar-core.js lấy Can Chi Tứ Trị thực tế từng canh giờ.
- * 3. Chuyển Tứ Trị sang m01 -> m08 để đánh giá 64 quẻ (384 hào).
- * 4. Thực thi quy tắc lọc: Dụng Thần & Hào Thế phải >= Medium (3.0), loại Bạch Hổ/Hung thần.
+ * Đóng vai trò Cổng Gác (Routing & Filter Engine):
+ * - Nhận mốc Time A -> Time B.
+ * - Gọi calendar-core.js lấy Can Chi Tứ Trị.
+ * - Chuyển sang m01 -> m08 nhờ tính toán Vượng Suy.
+ * - Thực thi tiêu chí lọc: Thế & Dụng Thân >= Medium, loại Bạch Hổ/Hung thần.
  */
 
 window.StrategyFinderModule = (function () {
@@ -12,7 +12,7 @@ window.StrategyFinderModule = (function () {
     const SCORE_MEDIUM = 3.0; // Ngưỡng Medium theo quy chuẩn m02-m08
 
     /**
-     * 1. CỔNG KẾT NỐI CALENDAR-CORE: Lấy Tứ Trị Can Chi
+     * CỔNG KẾT NỐI 1: Gọi calendar-core.js lấy Tứ Trị
      */
     function getTuTriFromCore(dateObj) {
         let core = window.CalendarCore || window.NL_Calendar || window;
@@ -25,7 +25,7 @@ window.StrategyFinderModule = (function () {
                 ctx = NL_getDayContext(dateObj);
             }
         } catch (err) {
-            console.warn("m09: Lỗi kết nối CalendarCore, dùng fallback", err);
+            console.warn("m09: Lỗi kết nối CalendarCore", err);
         }
 
         if (ctx) {
@@ -38,7 +38,7 @@ window.StrategyFinderModule = (function () {
             };
         }
 
-        // Fallback dữ liệu chuẩn nếu core chưa load xong
+        // Fallback dữ liệu chuẩn nếu core bị chậm luồng
         return {
             gioCanChi: "Bính Tý",
             ngayCanChi: "Mậu Sửu",
@@ -49,7 +49,7 @@ window.StrategyFinderModule = (function () {
     }
 
     /**
-     * 2. CỔNG KẾT NỐI M02 - M08: Đánh giá điểm Vượng Suy Hưu Tù Tử
+     * CỔNG KẾT NỐI 2: Gọi m02 - m08 đánh giá điểm Hào
      */
     function evaluateHaoWithCore(hao, tuTri) {
         if (!hao) return { score: 0, isOk: false, desc: "Không có hào" };
@@ -64,10 +64,10 @@ window.StrategyFinderModule = (function () {
                 score = res.score;
                 desc = res.desc;
             } catch (e) {
-                console.warn("m09: m02 calc error", e);
+                console.warn("m09: Lỗi gọi m02 calcVuangSuy", e);
             }
         } else {
-            // Fallback logic Cổ Pháp cơ bản nếu m02 chưa gắn window
+            // Logic fallback Cổ Pháp cơ bản nếu m02 chưa được gắn biến window
             if (hao.isNguyetTruc || hao.isNhatTruc) { score = 4.0; desc = "Trực Nhật/Nguyệt (Vượng)"; }
             else if (hao.isNguyetSinh || hao.isNhatSinh) { score = 3.5; desc = "Được Sinh (Medium+)"; }
             else if (hao.isNguyetPha) { score = 0; desc = "Nguyệt Phá (Tuyệt)"; }
@@ -82,7 +82,7 @@ window.StrategyFinderModule = (function () {
     }
 
     /**
-     * 3. ENGINE QUÉT THỜI GIAN A -> B X 64 QUẺ X 384 HÀO
+     * ENGINE BỐC QUẺ & DUYỆT CỔNG (GATEKEEPER)
      */
     function runSearchEngine(params) {
         const results = [];
@@ -100,7 +100,7 @@ window.StrategyFinderModule = (function () {
         }
 
         if (!allQueList || allQueList.length === 0) {
-            console.error("m09: Chưa lấy được dữ liệu 64 quẻ từ m01!");
+            console.error("m09: Chưa kết nối được dữ liệu 64 quẻ từ m01!");
             return results;
         }
 
@@ -125,7 +125,7 @@ window.StrategyFinderModule = (function () {
 
                     if (!lucThanHao || !theHao) return;
 
-                    // Gọi m02-m08 đánh giá điểm
+                    // Gọi m02-m08 lấy đánh giá điểm Vượng Suy
                     const evalLucThan = evaluateHaoWithCore(lucThanHao, tuTri);
                     const evalThe = evaluateHaoWithCore(theHao, tuTri);
 
@@ -144,7 +144,7 @@ window.StrategyFinderModule = (function () {
                     let hasBachHoRisk = haoList.some(h => h.isDong && h.lucThanName === "Bạch Hổ");
                     if (hasBachHoRisk) return;
 
-                    // THỎA MÃN TẤT CẢ TIÊU CHÍ -> ĐẶT VÀO KẾT QUẢ
+                    // THỎA MÃN TẤT CẢ TIÊU CHÍ -> CHO QUA CỔNG
                     results.push({
                         timeStr: checkDate.toLocaleString('vi-VN'),
                         tuTri: tuTri,
@@ -163,7 +163,7 @@ window.StrategyFinderModule = (function () {
     }
 
     /**
-     * 4. GIAO DIỆN TƯƠNG TÁC UI
+     * GIAO DIỆN HIỂN THỊ UI CỦA M09
      */
     function renderUI() {
         if (document.getElementById("m09-container")) return;
@@ -202,7 +202,7 @@ window.StrategyFinderModule = (function () {
             </div>
             <div style="text-align:center; margin-bottom:15px;">
                 <button id="m09-btn-exec" style="background:#8b0000; color:#fff; font-weight:bold; border:none; padding:10px 20px; border-radius:4px; cursor:pointer;">
-                    QUÉT T TỨ TRỊ (A &rarr; B) & LỌC QUẺ
+                    QUÉT TỨ TRỊ (A &rarr; B) & LỌC QUẺ
                 </button>
             </div>
             <div id="m09-output-box" style="background:#fff; padding:10px; border:1px solid #ccc; max-height:400px; overflow-y:auto;">
@@ -214,7 +214,7 @@ window.StrategyFinderModule = (function () {
 
         document.getElementById("m09-btn-exec").addEventListener("click", function () {
             const outBox = document.getElementById("m09-output-box");
-            outBox.innerHTML = "<p style='text-align:center; color:orange;'><b>Đang duyệt vòng lặp Tứ Trị thời gian A -> B và đối chiếu với m01-m08...</b></p>";
+            outBox.innerHTML = "<p style='text-align:center; color:orange;'><b>Đang duyệt Tứ Trị thời gian A -> B và đối chiếu với m01-m08...</b></p>";
 
             setTimeout(() => {
                 const list = runSearchEngine({
