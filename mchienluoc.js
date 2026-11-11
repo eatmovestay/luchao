@@ -337,6 +337,32 @@
 
             <button class="m-btn-process" id="mcl_tim_runBtn">🔍 TÌM QUẺ ĐẠT SƠ KHẢO</button>
             <div id="mcl_tim_status" style="font-size:0.75rem;color:#888;margin:6px 0;"></div>
+
+            <!-- Menu xem kết quả: Tên Quẻ XOR Xem List -->
+            <div id="mcl_tim_viewBar" style="display:none;margin:10px 0;padding:10px;border:1px solid #444;border-radius:8px;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                    <button type="button" class="btn-secondary" id="mcl_tim_modeTen" style="margin:0;flex:1;">📜 Menu Tên Quẻ (BẬT)</button>
+                    <button type="button" class="btn-secondary" id="mcl_tim_modeList" style="margin:0;flex:1;opacity:0.55;">📑 Menu Xem List (TẮT)</button>
+                </div>
+                <div id="mcl_tim_tenBox">
+                    <label>Chọn tên quẻ đã tìm được</label>
+                    <select id="mcl_tim_tenSelect">
+                        <option value="">-- Tất cả (rút gọn) --</option>
+                    </select>
+                    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                        <button type="button" class="btn-secondary" id="mcl_tim_tenShow" style="margin:0;">Xem chi tiết quẻ đã chọn</button>
+                        <button type="button" class="btn-secondary" id="mcl_tim_tenNext40" style="margin:0;display:none;">Xem Tiếp (41…)</button>
+                    </div>
+                </div>
+                <div id="mcl_tim_listBox" style="display:none;margin-top:4px;">
+                    <label>Chọn List (mỗi list tối đa 10 quẻ)</label>
+                    <select id="mcl_tim_listSelect">
+                        <option value="0">List 1 (quẻ 1–10)</option>
+                    </select>
+                    <button type="button" class="btn-secondary" id="mcl_tim_listShow" style="margin:8px 0 0;">Xem List đã chọn</button>
+                </div>
+            </div>
+
             <textarea id="mcl_tim_output" class="m-output-box" readonly></textarea>
             <button class="btn-copy" id="mcl_tim_copyBtn" style="display:none;">📋 SAO CHÉP KẾT QUẢ TÌM QUẺ</button>
             <div class="fallback-box" id="mcl_tim_fallbackBox">
@@ -902,56 +928,72 @@
             };
         }
 
-        // Tương tác sinh-khắc (rút gọn)
+        // Tương tác sinh-khắc (rút gọn) — nhãn theo đúng cặp (Thế/Ứng, Động/Thế…)
         let tacDiem = 70;
         const notes = [];
 
-        function applyRel(a, b, label, weight) {
+        // shortPair: chuỗi hiển thị đúng cặp, vd "Thế/Ứng", "Động/Dụng"
+        function applyRel(a, b, label, shortPair, weight) {
             const rd = relDir(a, b);
-            if (rd.type === "none" || rd.type === "hoa") {
-                if (rd.type === "hoa") { notes.push(label + ": tỷ hòa"); tacDiem += 2 * weight; }
+            if (rd.type === "none") return;
+            if (rd.type === "hoa") {
+                notes.push(label + ": tỷ hòa");
+                tacDiem += 2 * weight;
                 return;
             }
             const actorIsA = rd.from === "a";
             const type = rd.type;
-            // Phạt nếu khắc vào Thế hoặc Dụng
+            const verb = type === "sinh" ? "SINH" : "KHẮC";
+
             if (type === "khac") {
                 const victim = actorIsA ? b : a;
                 const actor = actorIsA ? a : b;
                 if (victim === T || (victim.pos === T.pos && !victim.isBien)) {
                     tacDiem -= 18 * weight;
-                    notes.push(label + ": có chiều KHẮC Thế (−)");
+                    notes.push(label + ": có chiều KHẮC " + shortPair + " (hướng Thế) (−)");
                 } else if (victim === dungChinh || (victim.pos === dungChinh.pos && victim.lt === dungChinh.lt)) {
                     tacDiem -= 14 * weight;
-                    notes.push(label + ": có chiều KHẮC Dụng (−)");
+                    notes.push(label + ": có chiều KHẮC " + shortPair + " (hướng Dụng) (−)");
+                } else if (victim === U || (victim.pos === U.pos && !victim.isBien)) {
+                    tacDiem -= 6 * weight;
+                    notes.push(label + ": có chiều KHẮC " + shortPair + " (hướng Ứng) (− nhẹ)");
                 } else if (actor === T || actor === dungChinh) {
                     tacDiem += 4 * weight;
-                    notes.push(label + ": Thế/Dụng khắc đối phương (+ nhẹ)");
+                    notes.push(label + ": có chiều KHẮC " + shortPair + " (+ nhẹ, Thế/Dụng khắc đối phương)");
+                } else {
+                    notes.push(label + ": có chiều KHẮC " + shortPair);
                 }
             } else if (type === "sinh") {
                 const receiver = actorIsA ? b : a;
                 const giver = actorIsA ? a : b;
                 if (receiver === T || receiver === dungChinh) {
                     tacDiem += 10 * weight;
-                    notes.push(label + ": có chiều SINH Thế/Dụng (+)");
+                    notes.push(label + ": có chiều SINH " + shortPair + " (+)");
+                } else if (receiver === U || (receiver.pos === U.pos && !receiver.isBien)) {
+                    tacDiem += 3 * weight;
+                    notes.push(label + ": có chiều SINH " + shortPair + " (hướng Ứng) (+ nhẹ)");
                 } else if (giver === T || giver === dungChinh) {
                     tacDiem -= 6 * weight;
-                    notes.push(label + ": Thế/Dụng phải SINH ra ngoài (− nhẹ)");
+                    const giverName = (giver === T) ? "Thế" : "Dụng";
+                    notes.push(label + ": " + giverName + " phải SINH ra ngoài qua " + shortPair + " (− nhẹ)");
+                } else {
+                    notes.push(label + ": có chiều SINH " + shortPair);
                 }
             }
         }
 
-        applyRel(T, dungChinh, "Thế↔Dụng", 1.2);
-        applyRel(T, U, "Thế↔Ứng", 1.0);
+        applyRel(T, dungChinh, "Thế↔Dụng", "Thế/Dụng", 1.2);
+        applyRel(T, U, "Thế↔Ứng", "Thế/Ứng", 1.0);
+        applyRel(U, dungChinh, "Ứng↔Dụng", "Ứng/Dụng", 0.9);
         if (D) {
-            applyRel(D, T, "Động↔Thế", 1.1);
-            applyRel(D, dungChinh, "Động↔Dụng", 1.1);
-            applyRel(D, U, "Động↔Ứng", 0.7);
+            applyRel(D, T, "Động↔Thế", "Động/Thế", 1.1);
+            applyRel(D, dungChinh, "Động↔Dụng", "Động/Dụng", 1.1);
+            applyRel(D, U, "Động↔Ứng", "Động/Ứng", 0.7);
         }
         if (B) {
-            applyRel(B, T, "Biến↔Thế", 1.0);
-            applyRel(B, dungChinh, "Biến↔Dụng", 1.0);
-            if (D) applyRel(B, D, "Biến↔Động", 0.8);
+            applyRel(B, T, "Biến↔Thế", "Biến/Thế", 1.0);
+            applyRel(B, dungChinh, "Biến↔Dụng", "Biến/Dụng", 1.0);
+            if (D) applyRel(B, D, "Biến↔Động", "Biến/Động", 0.8);
         }
 
         // Lục Thần thú
@@ -1086,6 +1128,16 @@
         return box;
     }
 
+    function shortQueName(full) {
+        // "Hỏa Địa Tấn" → "Tấn"; "Thuần Càn" → "Thuần Càn"; "Đại Hữu" → "Đại Hữu"
+        const s = String(full || "").trim();
+        if (!s) return s;
+        const parts = s.split(/\s+/);
+        if (parts.length <= 2) return s;
+        // 3+ từ: lấy 1–2 từ cuối (tên quẻ chuẩn)
+        return parts.slice(-2).join(" ").replace(/^Địa |^Thiên |^Hỏa |^Thủy |^Sơn |^Lôi |^Phong |^Trạch /i, "") || parts[parts.length - 1];
+    }
+
     function formatCandidate(c, idx) {
         let t = "";
         t += "──── #" + (idx + 1) + " | điểm sơ khảo: " + c.score + "/100 | " + (c.pass ? "ĐẠT" : "không đạt") + " ────\n";
@@ -1126,6 +1178,120 @@
         return t;
     }
 
+    // ---- Trạng thái xem kết quả Tìm Quẻ ----
+    let timResults = [];
+    let timViewMode = "ten"; // "ten" | "list"
+    let timTenPage = 0; // trang 0 = 1–40, 1 = 41–80…
+    let timHeaderMeta = "";
+
+    function setTimOutput(text) {
+        const out = $("mcl_tim_output");
+        out.value = text;
+        out.style.display = "block";
+        out.style.height = "auto";
+        out.style.height = Math.min(out.scrollHeight + 6, 1800) + "px";
+        $("mcl_tim_copyBtn").style.display = "block";
+        $("mcl_tim_fallbackBox").style.display = "none";
+    }
+
+    function uniqueQueNames(results) {
+        const seen = {};
+        const arr = [];
+        results.forEach(r => {
+            if (!seen[r.queName]) {
+                seen[r.queName] = true;
+                arr.push({ full: r.queName, short: shortQueName(r.queName), cung: r.cungName });
+            }
+        });
+        arr.sort((a, b) => a.short.localeCompare(b.short, "vi"));
+        return arr;
+    }
+
+    function refreshTenSelect() {
+        const sel = $("mcl_tim_tenSelect");
+        const names = uniqueQueNames(timResults);
+        sel.innerHTML = '<option value="">-- Tất cả quẻ đạt (rút gọn) --</option>';
+        names.forEach(n => {
+            const opt = document.createElement("option");
+            opt.value = n.full;
+            opt.textContent = n.short + "  —  " + n.full + " (Họ " + n.cung + ")";
+            sel.appendChild(opt);
+        });
+    }
+
+    function refreshListSelect() {
+        const sel = $("mcl_tim_listSelect");
+        const n = timResults.length;
+        const pages = Math.max(1, Math.ceil(n / 10));
+        sel.innerHTML = "";
+        for (let i = 0; i < pages && i < 10; i++) {
+            const from = i * 10 + 1;
+            const to = Math.min((i + 1) * 10, n);
+            const opt = document.createElement("option");
+            opt.value = String(i);
+            opt.textContent = "List " + (i + 1) + " (quẻ " + from + "–" + to + ")";
+            sel.appendChild(opt);
+        }
+        if (pages > 10) {
+            // List 10 covers 91–100; nếu nhiều hơn vẫn gói phần còn lại vào list cuối
+            const opt = sel.options[sel.options.length - 1];
+            if (opt) opt.textContent = "List 10 (quẻ 91–" + n + ")";
+        }
+    }
+
+    function setViewMode(mode) {
+        timViewMode = mode;
+        const tenOn = mode === "ten";
+        $("mcl_tim_modeTen").style.opacity = tenOn ? "1" : "0.55";
+        $("mcl_tim_modeList").style.opacity = tenOn ? "0.55" : "1";
+        $("mcl_tim_modeTen").textContent = tenOn ? "📜 Menu Tên Quẻ (BẬT)" : "📜 Menu Tên Quẻ (TẮT)";
+        $("mcl_tim_modeList").textContent = tenOn ? "📑 Menu Xem List (TẮT)" : "📑 Menu Xem List (BẬT)";
+        $("mcl_tim_tenBox").style.display = tenOn ? "block" : "none";
+        $("mcl_tim_listBox").style.display = tenOn ? "none" : "block";
+        if (tenOn) renderTenView();
+        else renderListView();
+    }
+
+    function renderTenView() {
+        const chosen = $("mcl_tim_tenSelect").value;
+        let subset = timResults;
+        if (chosen) subset = timResults.filter(r => r.queName === chosen);
+
+        const PAGE = 40;
+        const start = timTenPage * PAGE;
+        const pageItems = subset.slice(start, start + PAGE);
+        const hasMore = subset.length > start + PAGE;
+
+        $("mcl_tim_tenNext40").style.display = (subset.length > PAGE) ? "inline-block" : "none";
+        $("mcl_tim_tenNext40").textContent = hasMore
+            ? ("Xem Tiếp (" + (start + PAGE + 1) + "–" + Math.min(start + PAGE * 2, subset.length) + ")")
+            : (timTenPage > 0 ? "← Về đầu (1–" + Math.min(PAGE, subset.length) + ")" : "Xem Tiếp");
+
+        let text = timHeaderMeta;
+        text += "【 Chế độ: Menu Tên Quẻ 】\n";
+        if (chosen) text += "Đang xem: " + chosen + " — " + subset.length + " cấu hình đạt\n\n";
+        else text += "Tất cả: " + subset.length + " ứng viên | trang " + (timTenPage + 1) +
+            " (hiện " + pageItems.length + " dòng, tối đa 40/trang)\n\n";
+
+        if (!pageItems.length) text += "(Không có ứng viên trong lựa chọn này.)\n";
+        else pageItems.forEach((c, i) => { text += formatCandidate(c, start + i); });
+        text += "=== HẾT ===";
+        setTimOutput(text);
+    }
+
+    function renderListView() {
+        const li = parseInt($("mcl_tim_listSelect").value, 10) || 0;
+        const start = li * 10;
+        const pageItems = timResults.slice(start, start + 10);
+        let text = timHeaderMeta;
+        text += "【 Chế độ: Xem List " + (li + 1) + " — quẻ " + (start + 1) + "–" + (start + pageItems.length) + " 】\n";
+        text += "Tổng đạt: " + timResults.length + "\n\n";
+        if (!pageItems.length) text += "(List trống.)\n";
+        else pageItems.forEach((c, i) => { text += formatCandidate(c, start + i); });
+        text += "=== HẾT ===";
+        setTimOutput(text);
+    }
+
     function runTimQue() {
         const dungLT = $("mcl_tim_dt").value;
         if (!dungLT) { alert("Vui lòng chọn Dụng Thần."); return; }
@@ -1160,8 +1326,8 @@
         status.textContent = "Đang quét " + timePoints.length + " mốc × 64 quẻ × " + dongList.length + " cấu hình hào…";
         out.value = "";
         out.style.display = "block";
+        $("mcl_tim_viewBar").style.display = "none";
 
-        // Cho UI kịp vẽ status
         setTimeout(function () {
             const results = [];
             let scanned = 0;
@@ -1194,30 +1360,29 @@
             });
 
             results.sort((a, b) => b.score - a.score || (a.hasHeavy ? 1 : 0) - (b.hasHeavy ? 1 : 0));
+            timResults = results;
+            window.MCL_TIM_QUE_RESULTS = results;
+            timTenPage = 0;
 
-            let text = "=== TÌM QUẺ — SƠ KHẢO (tối đa 1 hào động) ===\n";
-            text += "Dụng Thần: " + dungLT + (quanCase ? " | Case Quan: " + quanCase : "") + "\n";
-            text += "Ngưỡng: " + threshold + " | Đã quét: " + scanned + " ứng viên | Đạt: " + results.length + "\n";
-            text += "Ghi chú: điểm là sơ khảo ~70%. Tuần Không / Phá / Mộ nằm trong Box Cân Nhắc — user tự quyết cuối.\n\n";
+            timHeaderMeta = "=== TÌM QUẺ — SƠ KHẢO (tối đa 1 hào động) ===\n" +
+                "Dụng Thần: " + dungLT + (quanCase ? " | Case Quan: " + quanCase : "") + "\n" +
+                "Ngưỡng: " + threshold + " | Đã quét: " + scanned + " | Đạt: " + results.length + "\n" +
+                "Ghi chú: điểm sơ khảo ~70%. Box Cân Nhắc (Không/Phá/Mộ) — user tự quyết cuối.\n\n";
 
             if (!results.length) {
-                text += "Không có ứng viên đạt ngưỡng với điều kiện hiện tại.\n";
-                text += "Gợi ý: hạ ngưỡng, nới khoảng ngày, bỏ tick Box sạch, hoặc đổi case Quan.\n";
-            } else {
-                const top = results.slice(0, 40);
-                top.forEach((c, i) => { text += formatCandidate(c, i); });
-                if (results.length > 40) text += "… còn " + (results.length - 40) + " ứng viên khác (chỉ hiện top 40).\n";
+                setTimOutput(timHeaderMeta +
+                    "Không có ứng viên đạt ngưỡng.\nGợi ý: hạ ngưỡng, nới khoảng ngày, bỏ tick Box sạch, hoặc đổi case Quan.\n=== HẾT ===");
+                status.textContent = "Xong — 0 ứng viên đạt.";
+                $("mcl_tim_viewBar").style.display = "none";
+                return;
             }
-            text += "=== HẾT TÌM QUẺ ===";
 
-            out.value = text;
-            out.style.height = "auto";
-            out.style.height = Math.min(out.scrollHeight + 6, 1800) + "px";
-            $("mcl_tim_copyBtn").style.display = "block";
-            $("mcl_tim_fallbackBox").style.display = "none";
-            status.textContent = "Xong — đạt " + results.length + " / " + scanned + " (hiện tối đa 40 dòng đầu).";
-
-            window.MCL_TIM_QUE_RESULTS = results;
+            refreshTenSelect();
+            refreshListSelect();
+            $("mcl_tim_viewBar").style.display = "block";
+            setViewMode("ten");
+            status.textContent = "Xong — đạt " + results.length + " / " + scanned +
+                ". Dùng Menu Tên Quẻ hoặc Xem List để duyệt.";
         }, 30);
     }
 
@@ -1226,6 +1391,21 @@
         copyGeneric($("mcl_tim_output").value, "mcl_tim_copyBtn", "mcl_tim_fallbackBox", "mcl_tim_fallbackText",
             "✅ ĐÃ SAO CHÉP!", "📋 SAO CHÉP KẾT QUẢ TÌM QUẺ");
     });
+
+    $("mcl_tim_modeTen").addEventListener("click", function () { setViewMode("ten"); });
+    $("mcl_tim_modeList").addEventListener("click", function () { setViewMode("list"); });
+    $("mcl_tim_tenShow").addEventListener("click", function () { timTenPage = 0; renderTenView(); });
+    $("mcl_tim_tenSelect").addEventListener("change", function () { timTenPage = 0; renderTenView(); });
+    $("mcl_tim_tenNext40").addEventListener("click", function () {
+        const chosen = $("mcl_tim_tenSelect").value;
+        const subset = chosen ? timResults.filter(r => r.queName === chosen) : timResults;
+        const PAGE = 40;
+        if ((timTenPage + 1) * PAGE < subset.length) timTenPage++;
+        else timTenPage = 0;
+        renderTenView();
+    });
+    $("mcl_tim_listShow").addEventListener("click", function () { renderListView(); });
+    $("mcl_tim_listSelect").addEventListener("change", function () { renderListView(); });
 
     /* ===================== EXPOSE ===================== */
     window.MCL_CORE = {
