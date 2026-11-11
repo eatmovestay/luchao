@@ -1,7 +1,7 @@
 /**
  * Module Chiến Lược & Tìm Quẻ Ngũ Linh / Lục Hào Cổ Pháp (m09.js)
  * Tích hợp tự động tra cứu Tứ Trị từ calendar-core.js, kế thừa logic m01-m08
- * VÀ DỰNG GIAO DIỆN CHUẨN: CHỌN MỐC TIME A->B + CHỌN LỤC THÂN DỤNG THẦN.
+ * VÀ ĐÃ ĐƯỢC LẮP BỘ LINH KIỆN: DUYỆT TỨ TRỊ THEO KHOẢNG THỜI GIAN A -> B.
  */
 
 window.StrategyFinderModule = (function () {
@@ -164,16 +164,14 @@ window.StrategyFinderModule = (function () {
     }
 
     /**
-     * 4. Lõi Thuật Toán Quét 64 Quẻ x 384 Hào Theo Phạm Vi Thời Gian (A -> B)
+     * 4. ENGINE TÌM QUẺ: DUYỆT VÒNG LẶP THỜI GIAN A -> B x 64 QUẺ x 384 HÀO
      */
     function searchStrategyQue(params) {
         const results = [];
-        const startTime = params ? new Date(params.startTime) : new Date();
+        const startDt = params && params.startTime ? new Date(params.startTime) : new Date();
+        const endDt = params && params.endTime ? new Date(params.endTime) : new Date(startDt.getTime() + 24 * 3600 * 1000);
         const targetLucThan = params ? params.targetLucThan : "Thê Tài";
         const quanQuyOption = params ? params.quanQuyOption : "CAT_THAN";
-
-        // Tra cứu Tứ Trị Can Chi từ calendar-core.js
-        const tuTri = getTuTriFromCalendar(startTime);
 
         let allQueList = [];
         if (typeof ModuleM01 !== 'undefined' && ModuleM01.getAll64Que) {
@@ -182,72 +180,89 @@ window.StrategyFinderModule = (function () {
             allQueList = window.ModuleM01.getAll64Que();
         }
 
-        allQueList.forEach(que => {
-            if (!que.possibleDongCases) return;
-            que.possibleDongCases.forEach(queCase => {
-                let lucThanHaoList = queCase.haoList.filter(h => h.lucThan === targetLucThan);
-                let isPhucThan = lucThanHaoList.length === 0;
+        // Tạo danh sách mốc thời gian nhảy (Mỗi bước nhảy 12 canh giờ / 1 ngày để quét Tứ Trị)
+        const timeStepMs = 12 * 3600 * 1000; // 12 tiếng
+        let currentTime = startDt.getTime();
+        const endTimeMs = endDt.getTime();
 
-                let lucThanMain = lucThanHaoList.find(h => h.isThe) || lucThanHaoList[0];
-                let theHao = queCase.haoList.find(h => h.isThe);
-                let ungHao = queCase.haoList.find(h => h.isUng);
-                let dongHaoList = queCase.haoList.filter(h => h.isDong);
-                let bienHaoList = queCase.bienHaoList || [];
+        // Giới hạn tối đa số mốc thời gian quét để tránh treo máy (tối đa 30 mốc)
+        let countMoc = 0;
 
-                if (!lucThanMain && isPhucThan) return;
+        while (currentTime <= endTimeMs && countMoc < 30) {
+            const checkDate = new Date(currentTime);
+            const tuTri = getTuTriFromCalendar(checkDate);
+            countMoc++;
 
-                const d1_LucThan = evaluateHaoStatusWithTuTri(lucThanMain, tuTri);
-                const d2_The = evaluateHaoStatusWithTuTri(theHao, tuTri);
-                const d3_Ung = evaluateHaoStatusWithTuTri(ungHao, tuTri);
+            allQueList.forEach(que => {
+                if (!que.possibleDongCases) return;
+                que.possibleDongCases.forEach(queCase => {
+                    let lucThanHaoList = queCase.haoList.filter(h => h.lucThan === targetLucThan);
+                    let isPhucThan = lucThanHaoList.length === 0;
 
-                // Logic lọc Quan Quỷ
-                if (targetLucThan === "Quan Quỷ") {
-                    if (quanQuyOption === "CAT_THAN") {
-                        if (lucThanMain && lucThanMain.lucThanName === "Bạch Hổ") return;
-                    } else if (quanQuyOption === "HUNG_THAN") {
-                        if (lucThanMain && lucThanMain.isDong) return;
-                        if (lucThanMain && lucThanMain.lucThanName !== "Thanh Long") return;
-                        if (d1_LucThan.score > SCORE_LEVELS.HUU) return;
+                    let lucThanMain = lucThanHaoList.find(h => h.isThe) || lucThanHaoList[0];
+                    let theHao = queCase.haoList.find(h => h.isThe);
+                    let ungHao = queCase.haoList.find(h => h.isUng);
+                    let dongHaoList = queCase.haoList.filter(h => h.isDong);
+                    let bienHaoList = queCase.bienHaoList || [];
+
+                    if (!lucThanMain && isPhucThan) return;
+
+                    const d1_LucThan = evaluateHaoStatusWithTuTri(lucThanMain, tuTri);
+                    const d2_The = evaluateHaoStatusWithTuTri(theHao, tuTri);
+                    const d3_Ung = evaluateHaoStatusWithTuTri(ungHao, tuTri);
+
+                    // Logic lọc Quan Quỷ
+                    if (targetLucThan === "Quan Quỷ") {
+                        if (quanQuyOption === "CAT_THAN") {
+                            if (lucThanMain && lucThanMain.lucThanName === "Bạch Hổ") return;
+                        } else if (quanQuyOption === "HUNG_THAN") {
+                            if (lucThanMain && lucThanMain.isDong) return;
+                            if (lucThanMain && lucThanMain.lucThanName !== "Thanh Long") return;
+                            if (d1_LucThan.score > SCORE_LEVELS.HUU) return;
+                        }
                     }
-                }
 
-                // Lọc Bạch Hổ phát động
-                let hasBachHoRisk = queCase.haoList.some(h => (h.isThe || h.isUng || h.isDong) && h.lucThanName === "Bạch Hổ" && h.isDong);
-                if (hasBachHoRisk) return;
+                    // Lọc Bạch Hổ phát động
+                    let hasBachHoRisk = queCase.haoList.some(h => (h.isThe || h.isUng || h.isDong) && h.lucThanName === "Bạch Hổ" && h.isDong);
+                    if (hasBachHoRisk) return;
 
-                const crossResult = analyzeCrossInteractions(lucThanMain, theHao, ungHao, dongHaoList, bienHaoList);
+                    const crossResult = analyzeCrossInteractions(lucThanMain, theHao, ungHao, dongHaoList, bienHaoList);
 
-                // THẾ HÀO BẮT BUỘC KHÔNG BẤT LỢI (>= MEDIUM)
-                if (!d2_The.isOk || crossResult.hasRiskForThe) return;
+                    // THẾ HÀO BẮT BUỘC KHÔNG BẤT LỢI (>= MEDIUM)
+                    if (!d2_The.isOk || crossResult.hasRiskForThe) return;
 
-                // LỤC THÂN PHẢI >= MEDIUM
-                if (!d1_LucThan.isOk) return;
+                    // LỤC THÂN PHẢI >= MEDIUM
+                    if (!d1_LucThan.isOk) return;
 
-                results.push({
-                    queTen: queCase.tenQue,
-                    haoDong: dongHaoList.map(h => h.index).join(", ") || "Quẻ Tĩnh",
-                    lucThanSelected: targetLucThan,
-                    isPhucThan: isPhucThan,
-                    tuTriInfo: tuTri,
-                    evaluations: { d1_LucThan, d2_The, d3_Ung, cross: crossResult },
-                    status: "ĐẠT YÊU CẦU"
+                    results.push({
+                        timeMoc: checkDate.toLocaleString('vi-VN'),
+                        tuTriInfo: tuTri,
+                        queTen: queCase.tenQue,
+                        haoDong: dongHaoList.map(h => h.index).join(", ") || "Quẻ Tĩnh",
+                        lucThanSelected: targetLucThan,
+                        isPhucThan: isPhucThan,
+                        evaluations: { d1_LucThan, d2_The, d3_Ung, cross: crossResult },
+                        status: "ĐẠT YÊU CẦU"
+                    });
                 });
             });
-        });
+
+            currentTime += timeStepMs;
+        }
 
         return results;
     }
 
     /**
-     * 5. GIAO DIỆN CẬP NHẬT: NHẬP MỐC THỜI GIAN A -> B & LỤC THÂN
+     * 5. GIAO DIỆN TƯƠNG TÁC FORM NHẬP TIME A -> B
      */
     function renderStrategyUI() {
         if (document.getElementById("m09-strategy-container")) return;
 
         const now = new Date();
         const defaultStart = now.toISOString().slice(0, 16);
-        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-        const defaultEnd = tomorrow.toISOString().slice(0, 16);
+        const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const defaultEnd = nextWeek.toISOString().slice(0, 16);
 
         const container = document.createElement("div");
         container.id = "m09-strategy-container";
@@ -267,7 +282,6 @@ window.StrategyFinderModule = (function () {
                 MODULE STRATEGY - TÌM QUẺ THEO MỐC THỜI GIAN A &rarr; B & LỤC THÂN
             </h3>
             
-            <!-- THỜI GIAN MỐC A VA B -->
             <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; background: #fff; padding: 10px; border-radius: 5px; border: 1px solid #eee;">
                 <div style="flex: 1; min-width: 240px;">
                     <label style="font-weight: bold; color: #333; display: block; margin-bottom: 4px;">Mốc Thời Gian A (Bắt đầu):</label>
@@ -279,7 +293,6 @@ window.StrategyFinderModule = (function () {
                 </div>
             </div>
 
-            <!-- CHỌN LỤC THÂN & BỘ LỌC QUAN QUỶ -->
             <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; align-items: center;">
                 <div style="flex: 1; min-width: 260px;">
                     <label style="font-weight: bold; display: block; margin-bottom: 4px;">Chọn Lục Thân Dụng Thần:</label>
@@ -322,49 +335,50 @@ window.StrategyFinderModule = (function () {
 
         document.getElementById("m09-btn-search").addEventListener("click", function () {
             const timeAVal = document.getElementById("m09-time-a").value;
+            const timeBVal = document.getElementById("m09-time-b").value;
             const selectedLucThan = lucThanSelect.value;
             const quanQuyOpt = document.getElementById("m09-quan-quy-opt").value;
             const resultBox = document.getElementById("m09-result-box");
 
-            if (!timeAVal) {
-                alert("Vui lòng chọn mốc thời gian A!");
+            if (!timeAVal || !timeBVal) {
+                alert("Vui lòng chọn đủ mốc thời gian A và B!");
                 return;
             }
 
-            resultBox.innerHTML = "<p style='color: #d4af37; font-weight: bold; text-align: center;'>Đang truy xuất Tứ Trị từ calendar-core.js và duyệt 64 quẻ (384 hào)...</p>";
+            resultBox.innerHTML = "<p style='color: #d4af37; font-weight: bold; text-align: center;'>Đang chạy vòng lặp duyệt Tứ Trị thời gian A -> B từ calendar-core.js và quét 64 quẻ (384 hào)...</p>";
 
-            const results = searchStrategyQue({
-                startTime: timeAVal,
-                targetLucThan: selectedLucThan,
-                quanQuyOption: quanQuyOpt
-            });
+            // Chạy bất đồng bộ nhẹ để không treo UI điện thoại
+            setTimeout(() => {
+                const results = searchStrategyQue({
+                    startTime: timeAVal,
+                    endTime: timeBVal,
+                    targetLucThan: selectedLucThan,
+                    quanQuyOption: quanQuyOpt
+                });
 
-            if (results.length === 0) {
-                resultBox.innerHTML = `<p style="color: red; font-weight: bold; text-align: center;">Không tìm thấy quẻ nào thỏa mãn tiêu chí (Thế & Dụng Thân phải đạt từ Medium trở lên trong mốc Tứ Trị này).</p>`;
-                return;
-            }
+                if (results.length === 0) {
+                    resultBox.innerHTML = `<p style="color: red; font-weight: bold; text-align: center;">Không tìm thấy quẻ nào thỏa mãn tiêu chí (Thế & Dụng Thân phải đạt từ Medium trở lên trong toàn bộ các mốc Tứ Trị thuộc khoảng thời gian này).</p>`;
+                    return;
+                }
 
-            const tt = results[0].tuTriInfo;
-            let html = `
-                <div style="background: #eef9ff; padding: 8px; border: 1px solid #b6e0fe; margin-bottom: 10px; border-radius: 4px;">
-                    <strong>Tứ Trị Tra Từ Calendar-Core:</strong> 
-                    Năm ${tt.namCanChi} | Tháng ${tt.thangCanChi} | Ngày ${tt.ngayCanChi} | Giờ ${tt.gioCanChi} (Tiết khí: ${tt.tietKhi})
-                </div>
-                <p style="color: green; font-weight: bold;">Tìm thấy ${results.length} trường hợp quẻ đạt yêu cầu (Thế hào &ge; Medium, Dụng thân &ge; Medium):</p>
-                <ol style="padding-left: 20px;">
-            `;
+                let html = `<p style="color: green; font-weight: bold;">Tìm thấy ${results.length} trường hợp quẻ đạt yêu cầu (Thế hào &ge; Medium, Dụng thân &ge; Medium):</p><ol style="padding-left: 20px;">`;
 
-            results.forEach(item => {
-                html += `
-                    <li style="margin-bottom: 10px; border-bottom: 1px dashed #eee; padding-bottom: 5px;">
-                        <strong>Quẻ: ${item.queTen}</strong> - Hào Động: <span style="color: blue;">${item.haoDong}</span> 
-                        <br/><small>- Dụng Thần (${item.lucThanSelected}): <strong>${item.evaluations.d1_LucThan.statusLabel}</strong> | Hào Thế: <strong>${item.evaluations.d2_The.statusLabel}</strong></small>
-                        <br/><small>- Đánh giá Tương tác: ${item.evaluations.cross.d6_The_LucThan.text}</small>
-                    </li>
-                `;
-            });
-            html += `</ol>`;
-            resultBox.innerHTML = html;
+                results.forEach(item => {
+                    const tt = item.tuTriInfo;
+                    html += `
+                        <li style="margin-bottom: 12px; border-bottom: 1px dashed #ccc; padding-bottom: 8px;">
+                            <div style="background: #eef9ff; padding: 4px 8px; border-radius: 4px; font-size: 13px; margin-bottom: 4px;">
+                                <strong>Mốc thời gian:</strong> ${item.timeMoc} | <strong>Tứ Trị:</strong> Năm ${tt.namCanChi} - Tháng ${tt.thangCanChi} - Ngày ${tt.ngayCanChi} - Giờ ${tt.gioCanChi}
+                            </div>
+                            <strong>Quẻ: ${item.queTen}</strong> - Hào Động: <span style="color: blue;">${item.haoDong}</span> 
+                            <br/><small>- Dụng Thần (${item.lucThanSelected}): <strong>${item.evaluations.d1_LucThan.statusLabel}</strong> | Hào Thế: <strong>${item.evaluations.d2_The.statusLabel}</strong></small>
+                            <br/><small>- Đánh giá Tương tác: ${item.evaluations.cross.d6_The_LucThan.text}</small>
+                        </li>
+                    `;
+                });
+                html += `</ol>`;
+                resultBox.innerHTML = html;
+            }, 100);
         });
     }
 
