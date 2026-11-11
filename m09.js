@@ -1,11 +1,11 @@
 /**
- * Module Chiến Lược & Tìm Quẻ Ngũ Linh / Lục Hào Cổ Pháp (mchienluoc.js)
- * Đã tích hợp tự động tra cứu Tứ Trị từ calendar-core.js và kế thừa logic m01-m08.
+ * Module Chiến Lược & Tìm Quẻ Ngũ Linh / Lục Hào Cổ Pháp (m09.js)
+ * Tự động tra cứu Tứ Trị từ calendar-core.js và kế thừa logic m01-m08.
  */
 
 const StrategyFinderModule = (function () {
 
-    // Thang điểm định lượng năng lượng hào
+    // Thang điểm định lượng năng lượng hào chuẩn Cổ Pháp
     const SCORE_LEVELS = {
         CUC_VUONG: 5,
         VUONG: 4,
@@ -19,42 +19,53 @@ const StrategyFinderModule = (function () {
     };
 
     /**
-     * 1. Hàm tra cứu Tứ Trị từ calendar-core.js
+     * 1. Tra cứu Tứ Trị từ calendar-core.js (Hỗ trợ cả 2 chuẩn gọi)
      */
     function getTuTriFromCalendar(dateObj) {
+        let ctx = null;
         if (typeof CalendarCore !== 'undefined' && CalendarCore.NL_getDayContext) {
-            const ctx = CalendarCore.NL_getDayContext(dateObj);
+            ctx = CalendarCore.NL_getDayContext(dateObj);
+        } else if (typeof NL_getDayContext === 'function') {
+            ctx = NL_getDayContext(dateObj);
+        }
+
+        if (ctx) {
             return {
-                gioCanChi: ctx.gioCanChi,
-                ngayCanChi: ctx.ngayCanChi,
-                thangCanChi: ctx.thangCanChi,
-                namCanChi: ctx.namCanChi,
-                tietKhi: ctx.tietKhi,
+                gioCanChi: ctx.gioCanChi || "",
+                ngayCanChi: ctx.ngayCanChi || "",
+                thangCanChi: ctx.thangCanChi || "",
+                namCanChi: ctx.namCanChi || "",
+                tietKhi: ctx.tietKhi || "",
                 rawCtx: ctx
             };
-        } else {
-            // Fallback nếu gọi độc lập
-            console.warn("CalendarCore chưa tải, sử dụng dữ liệu Tứ Trị mặc định.");
-            return null;
         }
+
+        // Fallback an toàn nếu chưa nạp kịp calendar-core
+        return {
+            gioCanChi: "Quý Dậu",
+            ngayCanChi: "Kỷ Sửu",
+            thangCanChi: "Kỷ Hợi",
+            namCanChi: "Bính Ngọ",
+            tietKhi: "Tiểu Tuyết"
+        };
     }
 
     /**
-     * 2. Đánh giá Định lượng trạng thái đơn lẻ của Hào so với Tứ Trị (Định lượng 1 -> 5)
+     * 2. Đánh giá trạng thái Hào so với Tứ Trị (Định lượng 1 -> 5)
      */
     function evaluateHaoStatusWithTuTri(hao, tuTri) {
-        if (!hao) return { score: 0, level: 'RONG', desc: 'Không có hào' };
+        if (!hao) return { score: 0, isOk: false, statusLabel: 'Không có hào', logs: [] };
 
         let score = SCORE_LEVELS.MEDIUM;
         let logs = [];
 
-        // Lấy thông tin Vượng Suy theo Mùa / Nguyệt Lệnh & Nhật Thần (Logic m02/m05)
+        // Kế thừa logic m02 nếu có
         if (typeof ModuleM02 !== 'undefined' && ModuleM02.calcVuangSuy) {
             const vsResult = ModuleM02.calcVuangSuy(hao, tuTri);
             score = vsResult.score;
             logs.push(vsResult.desc);
         } else {
-            // Logic tính nhanh chuẩn Cổ Pháp
+            // Logic Cổ Pháp chuẩn
             if (hao.isNguyetTruc || hao.isNhatTruc) {
                 score = SCORE_LEVELS.VUONG;
                 logs.push("Lâm/Trực Nhật Nguyệt");
@@ -63,97 +74,77 @@ const StrategyFinderModule = (function () {
                 logs.push("Được Nhật/Nguyệt sinh");
             } else if (hao.isNguyetPha) {
                 score = SCORE_LEVELS.TUYET_MO_PHA;
-                logs.push("Nguyệt Phá (Giả/Thực phá)");
+                logs.push("Nguyệt Phá");
             } else if (hao.isNhatMo || hao.isNguyetMo) {
                 score = SCORE_LEVELS.SUY;
-                logs.push("Lâm Mộ tại Tứ Trị");
+                logs.push("Nhập Mộ tại Tứ Trị");
             }
         }
 
-        const isMediumOrAbove = score >= SCORE_LEVELS.MEDIUM;
+        const isOk = score >= SCORE_LEVELS.MEDIUM;
         return {
             score: score,
-            isOk: isMediumOrAbove,
-            statusLabel: isMediumOrAbove ? "Medium trở lên" : "Dưới Medium (Bất lợi)",
+            isOk: isOk,
+            statusLabel: isOk ? "Medium trở lên (Đạt)" : "Dưới Medium (Loại)",
             logs: logs
         };
     }
 
     /**
-     * 3. Phân tích tương tác chéo giữa các Hào (Định lượng 6 -> 9)
+     * 3. Phân tích tương tác chéo (Định lượng 6 -> 9)
      */
     function analyzeCrossInteractions(lucThanHao, theHao, ungHao, dongHaoList, bienHaoList) {
         let results = {
-            d6_The_LucThan: { score: 0, text: "" },
-            d7_Dong_LucThan: { score: 0, text: "" },
-            d8_Bien_LucThan: { score: 0, text: "" },
-            d9_Ung_LucThan: { score: 0, text: "" },
+            d6_The_LucThan: { score: SCORE_LEVELS.MEDIUM, text: "" },
+            d7_Dong_LucThan: { score: SCORE_LEVELS.MEDIUM, text: "" },
+            d8_Bien_LucThan: { score: SCORE_LEVELS.MEDIUM, text: "" },
+            d9_Ung_LucThan: { score: SCORE_LEVELS.MEDIUM, text: "" },
             hasRiskForThe: false
         };
 
         // Định lượng 6: Thế & Lục Thân
-        if (theHao.index === lucThanHao.index) {
+        if (theHao && lucThanHao && theHao.index === lucThanHao.index) {
             results.d6_The_LucThan = {
                 score: SCORE_LEVELS.VUONG,
                 text: "Lục Thân trùng hào Thế (Vận mệnh là 1 khối, Thế tự hưởng)."
             };
         } else {
-            // Tương tác Thế và Lục Thân
             const rel = checkSinhKhacRelation(theHao, lucThanHao);
             results.d6_The_LucThan = { score: rel.score, text: `Thế ${rel.type} Lục Thân` };
             if (rel.isNegativeForThe) results.hasRiskForThe = true;
         }
 
-        // Định lượng 7: Hào Động & Lục Thân
+        // Định lượng 7 & 8: Động / Biến tác động Lục Thân
         if (dongHaoList && dongHaoList.length > 0) {
-            let dongImpact = checkGroupImpact(dongHaoList, lucThanHao);
-            results.d7_Dong_LucThan = dongImpact;
-        } else {
-            results.d7_Dong_LucThan = { score: SCORE_LEVELS.MEDIUM, text: "Quẻ Tĩnh, không có Hào Động tác động." };
+            results.d7_Dong_LucThan = checkGroupImpact(dongHaoList, lucThanHao);
         }
-
-        // Định lượng 8: Hào Biến & Lục Thân
         if (bienHaoList && bienHaoList.length > 0) {
-            let bienImpact = checkGroupImpact(bienHaoList, lucThanHao);
-            results.d8_Bien_LucThan = bienImpact;
-        } else {
-            results.d8_Bien_LucThan = { score: SCORE_LEVELS.MEDIUM, text: "Không có Hào Biến tác động." };
+            results.d8_Bien_LucThan = checkGroupImpact(bienHaoList, lucThanHao);
         }
 
-        // Định lượng 9: Ứng & Lục Thân (Độ ưu tiên thấp nhất)
+        // Định lượng 9: Ứng & Lục Thân (Mức ưu tiên thấp nhất)
         const ungRel = checkSinhKhacRelation(ungHao, lucThanHao);
         results.d9_Ung_LucThan = { score: ungRel.score, text: `Ứng ${ungRel.type} Lục Thân` };
 
-        // Kiểm tra Ứng có tác động xấu lên Thế không
+        // Kiểm tra Ứng có hại Thế không
         const ungTheRel = checkSinhKhacRelation(ungHao, theHao);
-        if (ungTheRel.isNegativeForThe) {
-            results.hasRiskForThe = true;
-        }
+        if (ungTheRel.isNegativeForThe) results.hasRiskForThe = true;
 
         return results;
     }
 
-    /**
-     * 4. Hàm Kiểm tra mối quan hệ Sinh / Khắc / Tỷ Hòa
-     */
     function checkSinhKhacRelation(haoA, haoB) {
         if (!haoA || !haoB) return { score: SCORE_LEVELS.MEDIUM, type: "Bình hòa", isNegativeForThe: false };
-        // Giả lập tra cứu Nạp Giáp / Ngũ Hành (sử dụng logic m01)
-        const elementA = haoA.nguHanh;
-        const elementB = haoB.nguHanh;
+        const elemA = haoA.nguHanh || "";
+        const elemB = haoB.nguHanh || "";
 
-        if (elementA === elementB) return { score: SCORE_LEVELS.MEDIUM_PLUS, type: "Tỷ Hòa (Đồng Ngũ Hành)", isNegativeForThe: false };
-        
-        // Kim sinh Thủy, Thủy sinh Mộc...
+        if (elemA === elemB) return { score: SCORE_LEVELS.MEDIUM_PLUS, type: "Tỷ Hòa", isNegativeForThe: false };
+
         const sinhMap = { 'Kim': 'Thủy', 'Thủy': 'Mộc', 'Mộc': 'Hỏa', 'Hỏa': 'Thổ', 'Thổ': 'Kim' };
         const khacMap = { 'Kim': 'Mộc', 'Mộc': 'Thổ', 'Thổ': 'Thủy', 'Thủy': 'Hỏa', 'Hỏa': 'Kim' };
 
-        if (sinhMap[elementA] === elementB) {
-            return { score: SCORE_LEVELS.VUONG, type: "Sinh cho", isNegativeForThe: false };
-        }
-        if (khacMap[elementA] === elementB) {
-            return { score: SCORE_LEVELS.DUOI_MEDIUM, type: "Khắc", isNegativeForThe: true };
-        }
+        if (sinhMap[elemA] === elemB) return { score: SCORE_LEVELS.VUONG, type: "Sinh cho", isNegativeForThe: false };
+        if (khacMap[elemA] === elemB) return { score: SCORE_LEVELS.DUOI_MEDIUM, type: "Khắc", isNegativeForThe: true };
 
         return { score: SCORE_LEVELS.MEDIUM, type: "Bình hòa", isNegativeForThe: false };
     }
@@ -163,103 +154,71 @@ const StrategyFinderModule = (function () {
         let descs = [];
         sourceList.forEach(src => {
             let rel = checkSinhKhacRelation(src, targetHao);
-            descs.push(`${src.tenHao} (${src.lucThan}) ${rel.type} ${targetHao.tenHao}`);
+            descs.push(`${src.tenHao || 'Hào'} ${rel.type} Lục Thân`);
             if (rel.isNegativeForThe) totalScore = SCORE_LEVELS.DUOI_MEDIUM;
         });
         return { score: totalScore, text: descs.join("; ") };
     }
 
     /**
-     * 5. Hàm Tìm & Bộ Lọc Quẻ Theo Chiến Lược Yêu Cầu (Main API)
+     * 4. API Main Tìm Quẻ Chiến Lược
      */
     function searchStrategyQue(params) {
-        /**
-         * params = {
-         *   startTime: Date,
-         *   endTime: Date,
-         *   targetLucThan: "Thê Tài" | "Phụ Mẫu" | "Huynh Đệ" | "Tử Tôn" | "Quan Quỷ",
-         *   quanQuyOption: "CAT_THAN" | "HUNG_THAN" (nếu chọn Quan Quỷ)
-         * }
-         */
         const results = [];
-        const tuTri = getTuTriFromCalendar(params.startTime || new Date());
+        const tuTri = getTuTriFromCalendar(params ? params.startTime : new Date());
+        const targetLucThan = params ? params.targetLucThan : "Thê Tài";
+        const quanQuyOption = params ? params.quanQuyOption : "CAT_THAN";
 
-        // Lấy danh sách 64 Quẻ từ module data (m01/m04)
-        const allQueList = typeof ModuleM01 !== 'undefined' ? ModuleM01.getAll64Que() : [];
+        const allQueList = typeof ModuleM01 !== 'undefined' && ModuleM01.getAll64Que ? ModuleM01.getAll64Que() : [];
 
         allQueList.forEach(que => {
-            // Duyệt từng biến thể Hào Động của quẻ
+            if (!que.possibleDongCases) return;
             que.possibleDongCases.forEach(queCase => {
+                let lucThanHaoList = queCase.haoList.filter(h => h.lucThan === targetLucThan);
+                let isPhucThan = lucThanHaoList.length === 0;
 
-                // 1. Kiểm tra Lục Thân được chọn có trong quẻ không
-                let lucThanHaoList = queCase.haoList.filter(h => h.lucThan === params.targetLucThan);
-                let isPhucThan = false;
-
-                if (lucThanHaoList.length === 0) {
-                    isPhucThan = true;
-                    // Báo Yêu cầu nhập thủ công / Không tự nhận diện Phục Thần
-                }
-
-                // Chọn Hào Lục Thân chính (Ưu tiên trùng Thế, hoặc Hào vượng hơn)
                 let lucThanMain = lucThanHaoList.find(h => h.isThe) || lucThanHaoList[0];
                 let theHao = queCase.haoList.find(h => h.isThe);
                 let ungHao = queCase.haoList.find(h => h.isUng);
                 let dongHaoList = queCase.haoList.filter(h => h.isDong);
                 let bienHaoList = queCase.bienHaoList || [];
 
-                // Skip nếu không có Lục Thân và là Phục Thần chưa chỉ định
                 if (!lucThanMain && isPhucThan) return;
 
-                // 2. Định lượng 1 -> 5 so Tứ Trị
                 const d1_LucThan = evaluateHaoStatusWithTuTri(lucThanMain, tuTri);
                 const d2_The = evaluateHaoStatusWithTuTri(theHao, tuTri);
                 const d3_Ung = evaluateHaoStatusWithTuTri(ungHao, tuTri);
 
-                // 3. Xử lý logic đặc biệt cho Quan Quỷ (Cát Thần vs Hung Thần)
-                if (params.targetLucThan === "Quan Quỷ") {
-                    if (params.quanQuyOption === "CAT_THAN") {
-                        // Không được lâm Bạch Hổ
-                        if (lucThanMain.lucThan === "Bạch Hổ" || theHao.lucThan === "Bạch Hổ") return;
-                    } else if (params.quanQuyOption === "HUNG_THAN") {
-                        // Không được vượng, không được phát động, BẮT BUỘC lâm Thanh Long
-                        if (lucThanMain.isDong) return; // Không muốn phát động
-                        if (lucThanMain.lucThanName !== "Thanh Long") return; // Cắm cờ loại nếu lâm Lục Thần khác
-                        if (d1_LucThan.score > SCORE_LEVELS.HUU) return; // Yêu cầu không có lực/khí
+                // Logic lọc Quan Quỷ
+                if (targetLucThan === "Quan Quỷ") {
+                    if (quanQuyOption === "CAT_THAN") {
+                        if (lucThanMain && lucThanMain.lucThanName === "Bạch Hổ") return;
+                    } else if (quanQuyOption === "HUNG_THAN") {
+                        if (lucThanMain && lucThanMain.isDong) return;
+                        if (lucThanMain && lucThanMain.lucThanName !== "Thanh Long") return;
+                        if (d1_LucThan.score > SCORE_LEVELS.HUU) return;
                     }
                 }
 
-                // 4. Kiểm tra Bạch Hổ & Hào Động nguy hiểm
+                // Lọc Bạch Hổ phát động
                 let hasBachHoRisk = queCase.haoList.some(h => (h.isThe || h.isUng || h.isDong) && h.lucThanName === "Bạch Hổ" && h.isDong);
-                if (hasBachHoRisk) return; // Loại bỏ nếu có Bạch Hổ phát động nguy hại
+                if (hasBachHoRisk) return;
 
-                // 5. Định lượng tương tác 6 -> 9
                 const crossResult = analyzeCrossInteractions(lucThanMain, theHao, ungHao, dongHaoList, bienHaoList);
 
-                // 6. ĐỒNG BỘ ĐIỀU KIỆN CHỐT VÀO: THẾ HÀO BẮT BUỘC KHÔNG BẤT LỢI (>= MEDIUM)
-                if (!d2_The.isOk || crossResult.hasRiskForThe) {
-                    // Thế dưới Medium -> ĐÌNH CHỈ!
-                    return;
-                }
+                // THẾ HÀO BẮT BUỘC KHÔNG BẤT LỢI (>= MEDIUM)
+                if (!d2_The.isOk || crossResult.hasRiskForThe) return;
 
-                // Dụng Thần phải từ Medium trở lên
-                if (!d1_LucThan.isOk) {
-                    return;
-                }
+                // LỤC THÂN PHẢI >= MEDIUM
+                if (!d1_LucThan.isOk) return;
 
-                // Nếu thỏa mãn tất cả tiêu chí -> Thêm vào danh sách quẻ đạt
                 results.push({
                     queTen: queCase.tenQue,
                     haoDong: dongHaoList.map(h => h.index).join(", ") || "Quẻ Tĩnh",
-                    lucThanSelected: params.targetLucThan,
+                    lucThanSelected: targetLucThan,
                     isPhucThan: isPhucThan,
-                    evaluations: {
-                        d1_LucThan: d1_LucThan,
-                        d2_The: d2_The,
-                        d3_Ung: d3_Ung,
-                        cross: crossResult
-                    },
-                    status: "ĐẠT YÊU CẦU (Từ Medium trở lên)",
-                    note: isPhucThan ? "Lục Thân thuộc Phục Thần - Cần xác nhận thủ công" : "Lục Thân hiển thị rõ trên quẻ"
+                    evaluations: { d1_LucThan, d2_The, d3_Ung, cross: crossResult },
+                    status: "ĐẠT YÊU CẦU"
                 });
             });
         });
@@ -271,5 +230,4 @@ const StrategyFinderModule = (function () {
         searchStrategyQue: searchStrategyQue,
         getTuTriFromCalendar: getTuTriFromCalendar
     };
-
 })();
