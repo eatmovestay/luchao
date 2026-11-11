@@ -1,6 +1,7 @@
 /**
  * Module Chiến Lược & Tìm Quẻ Ngũ Linh / Lục Hào Cổ Pháp (m09.js)
- * Tự động tra cứu Tứ Trị từ calendar-core.js và kế thừa logic m01-m08.
+ * Tích hợp tự động tra cứu Tứ Trị từ calendar-core.js, kế thừa logic m01-m08
+ * VÀ TỰ ĐỘNG DỰNG GIAO DIỆN (UI) CHO USER CHỌN LỤC THÂN & TÌM QUẺ.
  */
 
 window.StrategyFinderModule = (function () {
@@ -32,7 +33,7 @@ window.StrategyFinderModule = (function () {
                 ctx = window.CalendarCore.NL_getDayContext(dateObj);
             }
         } catch (e) {
-            console.warn("m09.js: Không thể lấy context từ CalendarCore", e);
+            console.warn("m09.js: Chưa lấy được context từ CalendarCore", e);
         }
 
         if (ctx) {
@@ -46,7 +47,6 @@ window.StrategyFinderModule = (function () {
             };
         }
 
-        // Fallback mặc định nếu chưa lấy được thời gian
         return {
             gioCanChi: "Quý Dậu",
             ngayCanChi: "Kỷ Sửu",
@@ -235,10 +235,107 @@ window.StrategyFinderModule = (function () {
         return results;
     }
 
-    console.log("m09.js: Loaded successfully!");
+    /**
+     * 5. DỰNG GIAO DIỆN (UI) TỰ ĐỘNG CHO NGUỜI DÙNG THAO TÁC
+     */
+    function renderStrategyUI() {
+        if (document.getElementById("m09-strategy-container")) return;
+
+        const container = document.createElement("div");
+        container.id = "m09-strategy-container";
+        container.style.cssText = `
+            margin: 20px auto;
+            padding: 15px;
+            max-width: 800px;
+            background: #fff8e7;
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            font-family: Arial, sans-serif;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        `;
+
+        container.innerHTML = `
+            <h3 style="color: #8b0000; text-align: center; margin-top: 0;">MODULE STRATEGY - TÌM QUẺ THEO LỤC THÂN</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; align-items: center;">
+                <label style="font-weight: bold;">Chọn Lục Thân Dụng Thần:</label>
+                <select id="m09-luc-than-select" style="padding: 5px 10px; font-size: 14px;">
+                    <option value="Thê Tài">Thê Tài (Cầu tài, hôn nhân nữ)</option>
+                    <option value="Phụ Mẫu">Phụ Mẫu (Giấy tờ, nhà cửa, học hành)</option>
+                    <option value="Huynh Đệ">Huynh Đệ (Bạn bè, đối tác, cạnh tranh)</option>
+                    <option value="Tử Tôn">Tử Tôn (Con cái, giải tai, may mắn)</option>
+                    <option value="Quan Quỷ">Quan Quỷ (Công danh, tai họa, bệnh tật)</option>
+                </select>
+
+                <div id="m09-quan-quy-box" style="display: none; gap: 10px; align-items: center;">
+                    <label style="font-weight: bold; color: #b22222;">Case Quan Quỷ:</label>
+                    <select id="m09-quan-quy-opt" style="padding: 5px; font-size: 14px;">
+                        <option value="CAT_THAN">Quan Quỷ là Cát Thần (Cầu danh/Không lâm Bạch Hổ)</option>
+                        <option value="HUNG_THAN">Quan Quỷ là Hung Thần (Cần Lâm Thanh Long & Không động)</option>
+                    </select>
+                </div>
+
+                <button id="m09-btn-search" style="padding: 6px 15px; background: #8b0000; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">TÌM QUẺ ĐẠT YÊU CẦU</button>
+            </div>
+            <div id="m09-result-box" style="background: #ffffff; padding: 10px; border: 1px solid #ccc; min-height: 100px; max-height: 400px; overflow-y: auto;">
+                <p style="color: #666; text-align: center;">Vui lòng chọn Lục Thân và nhấn "TÌM QUẺ ĐẠT YÊU CẦU" để xem danh sách quẻ thỏa mãn.</p>
+            </div>
+        `;
+
+        // Tìm vị trí thích hợp trên total.html để chèn giao diện vào
+        const bodyOrMain = document.body;
+        bodyOrMain.appendChild(container);
+
+        // Sự kiện ẩn/hiện case Quan Quỷ
+        const lucThanSelect = document.getElementById("m09-luc-than-select");
+        const quanQuyBox = document.getElementById("m09-quan-quy-box");
+        lucThanSelect.addEventListener("change", function () {
+            quanQuyBox.style.display = this.value === "Quan Quỷ" ? "flex" : "none";
+        });
+
+        // Sự kiện Click nút Tìm Quẻ
+        document.getElementById("m09-btn-search").addEventListener("click", function () {
+            const selectedLucThan = lucThanSelect.value;
+            const quanQuyOpt = document.getElementById("m09-quan-quy-opt").value;
+            const resultBox = document.getElementById("m09-result-box");
+
+            resultBox.innerHTML = "<p>Đang duyệt 64 quẻ và tính toán Tứ Trị...</p>";
+
+            const results = searchStrategyQue({
+                startTime: new Date(),
+                targetLucThan: selectedLucThan,
+                quanQuyOption: quanQuyOpt
+            });
+
+            if (results.length === 0) {
+                resultBox.innerHTML = `<p style="color: red; font-weight: bold;">Không tìm thấy quẻ nào thỏa mãn tiêu chí (Thế & Dụng Thân đạt từ Medium trở lên trong mốc thời gian này).</p>`;
+                return;
+            }
+
+            let html = `<p style="color: green; font-weight: bold;">Tìm thấy ${results.length} trường hợp quẻ đạt yêu cầu (Thế hào >= Medium, Dụng thân >= Medium):</p><ol style="padding-left: 20px;">`;
+            results.forEach(item => {
+                html += `
+                    <li style="margin-bottom: 8px;">
+                        <strong>Quẻ: ${item.queTen}</strong> - Hào Động: <span style="color: blue;">${item.haoDong}</span> 
+                        <br/><small>- Trạng thái Dụng Thần: ${item.evaluations.d1_LucThan.statusLabel} | Trạng thái Thế: ${item.evaluations.d2_The.statusLabel}</small>
+                        <br/><small>- Tương tác: ${item.evaluations.cross.d6_The_LucThan.text}</small>
+                    </li>
+                `;
+            });
+            html += `</ol>`;
+            resultBox.innerHTML = html;
+        });
+    }
+
+    // Tự động dựng Form UI khi trang web nạp xong
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+        setTimeout(renderStrategyUI, 500);
+    } else {
+        document.addEventListener("DOMContentLoaded", renderStrategyUI);
+    }
 
     return {
         searchStrategyQue: searchStrategyQue,
-        getTuTriFromCalendar: getTuTriFromCalendar
+        getTuTriFromCalendar: getTuTriFromCalendar,
+        renderStrategyUI: renderStrategyUI
     };
 })();
