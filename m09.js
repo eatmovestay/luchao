@@ -56,7 +56,7 @@ window.StrategyFinderModule = (function () {
     }
 
     /**
-     * 2. Đánh giá trạng thái Hào so với Tứ Trị (Định lượng 1 -> 5)
+     * 2. Đánh giá trạng thái Hào so với Tứ Trị (Định lượng 1 -> 5) kế thừa từ m02/Cổ Pháp
      */
     function evaluateHaoStatusWithTuTri(hao, tuTri) {
         if (!hao) return { score: 0, isOk: false, statusLabel: 'Không có hào', logs: [] };
@@ -164,7 +164,7 @@ window.StrategyFinderModule = (function () {
     }
 
     /**
-     * 4. ENGINE TÌM QUẺ: DUYỆT VÒNG LẶP THỜI GIAN A -> B x 64 QUẺ x 384 HÀO
+     * 4. ENGINE LINH KIỆN CỐT LÕI: DUYỆT VÒNG LẶP THỜI GIAN A -> B x 64 QUẺ x 384 HÀO
      */
     function searchStrategyQue(params) {
         const results = [];
@@ -180,15 +180,14 @@ window.StrategyFinderModule = (function () {
             allQueList = window.ModuleM01.getAll64Que();
         }
 
-        // Tạo danh sách mốc thời gian nhảy (Mỗi bước nhảy 12 canh giờ / 1 ngày để quét Tứ Trị)
-        const timeStepMs = 12 * 3600 * 1000; // 12 tiếng
+        // Bước nhảy thời gian: Nhảy từng canh giờ (2 tiếng) để quét hết Tứ Trị
+        const timeStepMs = 2 * 3600 * 1000;
         let currentTime = startDt.getTime();
         const endTimeMs = endDt.getTime();
 
-        // Giới hạn tối đa số mốc thời gian quét để tránh treo máy (tối đa 30 mốc)
         let countMoc = 0;
-
-        while (currentTime <= endTimeMs && countMoc < 30) {
+        // Giới hạn 100 mốc quét để đảm bảo tốc độ trên smartphone
+        while (currentTime <= endTimeMs && countMoc < 100) {
             const checkDate = new Date(currentTime);
             const tuTri = getTuTriFromCalendar(checkDate);
             countMoc++;
@@ -211,7 +210,7 @@ window.StrategyFinderModule = (function () {
                     const d2_The = evaluateHaoStatusWithTuTri(theHao, tuTri);
                     const d3_Ung = evaluateHaoStatusWithTuTri(ungHao, tuTri);
 
-                    // Logic lọc Quan Quỷ
+                    // Logic lọc Quan Quỷ (Cát thần / Hung thần)
                     if (targetLucThan === "Quan Quỷ") {
                         if (quanQuyOption === "CAT_THAN") {
                             if (lucThanMain && lucThanMain.lucThanName === "Bạch Hổ") return;
@@ -231,7 +230,7 @@ window.StrategyFinderModule = (function () {
                     // THẾ HÀO BẮT BUỘC KHÔNG BẤT LỢI (>= MEDIUM)
                     if (!d2_The.isOk || crossResult.hasRiskForThe) return;
 
-                    // LỤC THÂN PHẢI >= MEDIUM
+                    // LỤC THÂN DỤNG THẦN PHẢI >= MEDIUM
                     if (!d1_LucThan.isOk) return;
 
                     results.push({
@@ -261,8 +260,8 @@ window.StrategyFinderModule = (function () {
 
         const now = new Date();
         const defaultStart = now.toISOString().slice(0, 16);
-        const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-        const defaultEnd = nextWeek.toISOString().slice(0, 16);
+        const nextDay = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        const defaultEnd = nextDay.toISOString().slice(0, 16);
 
         const container = document.createElement("div");
         container.id = "m09-strategy-container";
@@ -347,7 +346,6 @@ window.StrategyFinderModule = (function () {
 
             resultBox.innerHTML = "<p style='color: #d4af37; font-weight: bold; text-align: center;'>Đang chạy vòng lặp duyệt Tứ Trị thời gian A -> B từ calendar-core.js và quét 64 quẻ (384 hào)...</p>";
 
-            // Chạy bất đồng bộ nhẹ để không treo UI điện thoại
             setTimeout(() => {
                 const results = searchStrategyQue({
                     startTime: timeAVal,
