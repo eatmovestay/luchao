@@ -1,12 +1,11 @@
 /**
  * Module Chiến Lược & Tìm Quẻ Ngũ Linh / Lục Hào Cổ Pháp (m09.js)
  * Tích hợp tự động tra cứu Tứ Trị từ calendar-core.js, kế thừa logic m01-m08
- * VÀ TỰ ĐỘNG DỰNG GIAO DIỆN (UI) CHO USER CHỌN LỤC THÂN & TÌM QUẺ.
+ * VÀ DỰNG GIAO DIỆN CHUẨN: CHỌN MỐC TIME A->B + CHỌN LỤC THÂN DỤNG THẦN.
  */
 
 window.StrategyFinderModule = (function () {
 
-    // Thang điểm định lượng năng lượng hào chuẩn Cổ Pháp
     const SCORE_LEVELS = {
         CUC_VUONG: 5,
         VUONG: 4,
@@ -20,7 +19,7 @@ window.StrategyFinderModule = (function () {
     };
 
     /**
-     * 1. Tra cứu Tứ Trị an toàn từ calendar-core.js
+     * 1. Tra cứu Tứ Trị tự động từ calendar-core.js theo Dương Lịch
      */
     function getTuTriFromCalendar(dateObj) {
         let ctx = null;
@@ -165,13 +164,16 @@ window.StrategyFinderModule = (function () {
     }
 
     /**
-     * 4. API Main Tìm Quẻ Chiến Lược
+     * 4. Lõi Thuật Toán Quét 64 Quẻ x 384 Hào Theo Phạm Vi Thời Gian (A -> B)
      */
     function searchStrategyQue(params) {
         const results = [];
-        const tuTri = getTuTriFromCalendar(params ? params.startTime : new Date());
+        const startTime = params ? new Date(params.startTime) : new Date();
         const targetLucThan = params ? params.targetLucThan : "Thê Tài";
         const quanQuyOption = params ? params.quanQuyOption : "CAT_THAN";
+
+        // Tra cứu Tứ Trị Can Chi từ calendar-core.js
+        const tuTri = getTuTriFromCalendar(startTime);
 
         let allQueList = [];
         if (typeof ModuleM01 !== 'undefined' && ModuleM01.getAll64Que) {
@@ -226,6 +228,7 @@ window.StrategyFinderModule = (function () {
                     haoDong: dongHaoList.map(h => h.index).join(", ") || "Quẻ Tĩnh",
                     lucThanSelected: targetLucThan,
                     isPhucThan: isPhucThan,
+                    tuTriInfo: tuTri,
                     evaluations: { d1_LucThan, d2_The, d3_Ung, cross: crossResult },
                     status: "ĐẠT YÊU CẦU"
                 });
@@ -236,17 +239,22 @@ window.StrategyFinderModule = (function () {
     }
 
     /**
-     * 5. DỰNG GIAO DIỆN (UI) TỰ ĐỘNG CHO NGUỜI DÙNG THAO TÁC
+     * 5. GIAO DIỆN CẬP NHẬT: NHẬP MỐC THỜI GIAN A -> B & LỤC THÂN
      */
     function renderStrategyUI() {
         if (document.getElementById("m09-strategy-container")) return;
+
+        const now = new Date();
+        const defaultStart = now.toISOString().slice(0, 16);
+        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        const defaultEnd = tomorrow.toISOString().slice(0, 16);
 
         const container = document.createElement("div");
         container.id = "m09-strategy-container";
         container.style.cssText = `
             margin: 20px auto;
             padding: 15px;
-            max-width: 800px;
+            max-width: 850px;
             background: #fff8e7;
             border: 2px solid #d4af37;
             border-radius: 8px;
@@ -255,69 +263,103 @@ window.StrategyFinderModule = (function () {
         `;
 
         container.innerHTML = `
-            <h3 style="color: #8b0000; text-align: center; margin-top: 0;">MODULE STRATEGY - TÌM QUẺ THEO LỤC THÂN</h3>
-            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; align-items: center;">
-                <label style="font-weight: bold;">Chọn Lục Thân Dụng Thần:</label>
-                <select id="m09-luc-than-select" style="padding: 5px 10px; font-size: 14px;">
-                    <option value="Thê Tài">Thê Tài (Cầu tài, hôn nhân nữ)</option>
-                    <option value="Phụ Mẫu">Phụ Mẫu (Giấy tờ, nhà cửa, học hành)</option>
-                    <option value="Huynh Đệ">Huynh Đệ (Bạn bè, đối tác, cạnh tranh)</option>
-                    <option value="Tử Tôn">Tử Tôn (Con cái, giải tai, may mắn)</option>
-                    <option value="Quan Quỷ">Quan Quỷ (Công danh, tai họa, bệnh tật)</option>
-                </select>
+            <h3 style="color: #8b0000; text-align: center; margin-top: 0; border-bottom: 1px solid #d4af37; padding-bottom: 8px;">
+                MODULE STRATEGY - TÌM QUẺ THEO MỐC THỜI GIAN A &rarr; B & LỤC THÂN
+            </h3>
+            
+            <!-- THỜI GIAN MỐC A VA B -->
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; background: #fff; padding: 10px; border-radius: 5px; border: 1px solid #eee;">
+                <div style="flex: 1; min-width: 240px;">
+                    <label style="font-weight: bold; color: #333; display: block; margin-bottom: 4px;">Mốc Thời Gian A (Bắt đầu):</label>
+                    <input type="datetime-local" id="m09-time-a" value="${defaultStart}" style="width: 100%; padding: 6px; box-sizing: border-box;" />
+                </div>
+                <div style="flex: 1; min-width: 240px;">
+                    <label style="font-weight: bold; color: #333; display: block; margin-bottom: 4px;">Mốc Thời Gian B (Kết thúc):</label>
+                    <input type="datetime-local" id="m09-time-b" value="${defaultEnd}" style="width: 100%; padding: 6px; box-sizing: border-box;" />
+                </div>
+            </div>
 
-                <div id="m09-quan-quy-box" style="display: none; gap: 10px; align-items: center;">
-                    <label style="font-weight: bold; color: #b22222;">Case Quan Quỷ:</label>
-                    <select id="m09-quan-quy-opt" style="padding: 5px; font-size: 14px;">
-                        <option value="CAT_THAN">Quan Quỷ là Cát Thần (Cầu danh/Không lâm Bạch Hổ)</option>
-                        <option value="HUNG_THAN">Quan Quỷ là Hung Thần (Cần Lâm Thanh Long & Không động)</option>
+            <!-- CHỌN LỤC THÂN & BỘ LỌC QUAN QUỶ -->
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; align-items: center;">
+                <div style="flex: 1; min-width: 260px;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 4px;">Chọn Lục Thân Dụng Thần:</label>
+                    <select id="m09-luc-than-select" style="width: 100%; padding: 6px; font-size: 14px;">
+                        <option value="Thê Tài">Thê Tài (Cầu tài, hôn nhân nữ)</option>
+                        <option value="Phụ Mẫu">Phụ Mẫu (Giấy tờ, nhà cửa, học hành)</option>
+                        <option value="Huynh Đệ">Huynh Đệ (Bạn bè, đối tác, cạnh tranh)</option>
+                        <option value="Tử Tôn">Tử Tôn (Con cái, giải tai, may mắn)</option>
+                        <option value="Quan Quỷ">Quan Quỷ (Công danh, tai họa, bệnh tật)</option>
                     </select>
                 </div>
 
-                <button id="m09-btn-search" style="padding: 6px 15px; background: #8b0000; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">TÌM QUẺ ĐẠT YÊU CẦU</button>
+                <div id="m09-quan-quy-box" style="display: none; flex: 1; min-width: 260px;">
+                    <label style="font-weight: bold; color: #b22222; display: block; margin-bottom: 4px;">Lựa Chọn Quan Quỷ:</label>
+                    <select id="m09-quan-quy-opt" style="width: 100%; padding: 6px; font-size: 14px;">
+                        <option value="CAT_THAN">Quan Quỷ là Cát Thần (Cầu danh / Không Bạch Hổ)</option>
+                        <option value="HUNG_THAN">Quan Quỷ là Hung Thần (Bắt buộc Thanh Long & Tĩnh)</option>
+                    </select>
+                </div>
             </div>
-            <div id="m09-result-box" style="background: #ffffff; padding: 10px; border: 1px solid #ccc; min-height: 100px; max-height: 400px; overflow-y: auto;">
-                <p style="color: #666; text-align: center;">Vui lòng chọn Lục Thân và nhấn "TÌM QUẺ ĐẠT YÊU CẦU" để xem danh sách quẻ thỏa mãn.</p>
+
+            <div style="text-align: center; margin-bottom: 15px;">
+                <button id="m09-btn-search" style="padding: 10px 25px; background: #8b0000; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 15px;">
+                    TÌM QUẺ ĐẠT YÊU CẦU (A &rarr; B)
+                </button>
+            </div>
+
+            <div id="m09-result-box" style="background: #ffffff; padding: 12px; border: 1px solid #ccc; border-radius: 4px; min-height: 120px; max-height: 450px; overflow-y: auto;">
+                <p style="color: #666; text-align: center;">Vui lòng chọn mốc thời gian A &rarr; B, chọn Lục Thân và bấm "TÌM QUẺ ĐẠT YÊU CẦU".</p>
             </div>
         `;
 
-        // Tìm vị trí thích hợp trên total.html để chèn giao diện vào
-        const bodyOrMain = document.body;
-        bodyOrMain.appendChild(container);
+        document.body.appendChild(container);
 
-        // Sự kiện ẩn/hiện case Quan Quỷ
         const lucThanSelect = document.getElementById("m09-luc-than-select");
         const quanQuyBox = document.getElementById("m09-quan-quy-box");
         lucThanSelect.addEventListener("change", function () {
-            quanQuyBox.style.display = this.value === "Quan Quỷ" ? "flex" : "none";
+            quanQuyBox.style.display = this.value === "Quan Quỷ" ? "block" : "none";
         });
 
-        // Sự kiện Click nút Tìm Quẻ
         document.getElementById("m09-btn-search").addEventListener("click", function () {
+            const timeAVal = document.getElementById("m09-time-a").value;
             const selectedLucThan = lucThanSelect.value;
             const quanQuyOpt = document.getElementById("m09-quan-quy-opt").value;
             const resultBox = document.getElementById("m09-result-box");
 
-            resultBox.innerHTML = "<p>Đang duyệt 64 quẻ và tính toán Tứ Trị...</p>";
+            if (!timeAVal) {
+                alert("Vui lòng chọn mốc thời gian A!");
+                return;
+            }
+
+            resultBox.innerHTML = "<p style='color: #d4af37; font-weight: bold; text-align: center;'>Đang truy xuất Tứ Trị từ calendar-core.js và duyệt 64 quẻ (384 hào)...</p>";
 
             const results = searchStrategyQue({
-                startTime: new Date(),
+                startTime: timeAVal,
                 targetLucThan: selectedLucThan,
                 quanQuyOption: quanQuyOpt
             });
 
             if (results.length === 0) {
-                resultBox.innerHTML = `<p style="color: red; font-weight: bold;">Không tìm thấy quẻ nào thỏa mãn tiêu chí (Thế & Dụng Thân đạt từ Medium trở lên trong mốc thời gian này).</p>`;
+                resultBox.innerHTML = `<p style="color: red; font-weight: bold; text-align: center;">Không tìm thấy quẻ nào thỏa mãn tiêu chí (Thế & Dụng Thân phải đạt từ Medium trở lên trong mốc Tứ Trị này).</p>`;
                 return;
             }
 
-            let html = `<p style="color: green; font-weight: bold;">Tìm thấy ${results.length} trường hợp quẻ đạt yêu cầu (Thế hào >= Medium, Dụng thân >= Medium):</p><ol style="padding-left: 20px;">`;
+            const tt = results[0].tuTriInfo;
+            let html = `
+                <div style="background: #eef9ff; padding: 8px; border: 1px solid #b6e0fe; margin-bottom: 10px; border-radius: 4px;">
+                    <strong>Tứ Trị Tra Từ Calendar-Core:</strong> 
+                    Năm ${tt.namCanChi} | Tháng ${tt.thangCanChi} | Ngày ${tt.ngayCanChi} | Giờ ${tt.gioCanChi} (Tiết khí: ${tt.tietKhi})
+                </div>
+                <p style="color: green; font-weight: bold;">Tìm thấy ${results.length} trường hợp quẻ đạt yêu cầu (Thế hào &ge; Medium, Dụng thân &ge; Medium):</p>
+                <ol style="padding-left: 20px;">
+            `;
+
             results.forEach(item => {
                 html += `
-                    <li style="margin-bottom: 8px;">
+                    <li style="margin-bottom: 10px; border-bottom: 1px dashed #eee; padding-bottom: 5px;">
                         <strong>Quẻ: ${item.queTen}</strong> - Hào Động: <span style="color: blue;">${item.haoDong}</span> 
-                        <br/><small>- Trạng thái Dụng Thần: ${item.evaluations.d1_LucThan.statusLabel} | Trạng thái Thế: ${item.evaluations.d2_The.statusLabel}</small>
-                        <br/><small>- Tương tác: ${item.evaluations.cross.d6_The_LucThan.text}</small>
+                        <br/><small>- Dụng Thần (${item.lucThanSelected}): <strong>${item.evaluations.d1_LucThan.statusLabel}</strong> | Hào Thế: <strong>${item.evaluations.d2_The.statusLabel}</strong></small>
+                        <br/><small>- Đánh giá Tương tác: ${item.evaluations.cross.d6_The_LucThan.text}</small>
                     </li>
                 `;
             });
@@ -326,7 +368,6 @@ window.StrategyFinderModule = (function () {
         });
     }
 
-    // Tự động dựng Form UI khi trang web nạp xong
     if (document.readyState === "complete" || document.readyState === "interactive") {
         setTimeout(renderStrategyUI, 500);
     } else {
