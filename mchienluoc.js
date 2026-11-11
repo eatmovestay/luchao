@@ -364,7 +364,10 @@
             </div>
 
             <textarea id="mcl_tim_output" class="m-output-box" readonly></textarea>
-            <button class="btn-copy" id="mcl_tim_copyBtn" style="display:none;">📋 SAO CHÉP KẾT QUẢ TÌM QUẺ</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                <button class="btn-copy" id="mcl_tim_copyBtn" style="display:none;margin:0;">📋 SAO CHÉP KẾT QUẢ TÌM QUẺ</button>
+                <button class="btn-copy" id="mcl_tim_statsBtn" style="display:none;margin:0;">📊 THỐNG KÊ (.txt) — Tải xuống</button>
+            </div>
             <div class="fallback-box" id="mcl_tim_fallbackBox">
                 <textarea id="mcl_tim_fallbackText" readonly></textarea>
                 <div class="fallback-hint">Trình duyệt chặn copy — chọn hết ô trên rồi Ctrl+C</div>
@@ -1191,7 +1194,93 @@
         out.style.height = "auto";
         out.style.height = Math.min(out.scrollHeight + 6, 1800) + "px";
         $("mcl_tim_copyBtn").style.display = "block";
+        $("mcl_tim_statsBtn").style.display = timResults.length ? "inline-block" : "none";
         $("mcl_tim_fallbackBox").style.display = "none";
+    }
+
+    /** Ngày DL hiển thị: ưu tiên label calendar (D/M/YYYY), không thì suy từ nguon */
+    function formatNgayDL(time) {
+        if (!time) return "—";
+        if (time.label) return time.label;
+        const m = String(time.nguon || "").match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+        if (m) return m[1];
+        if (time.nhat || time.nguyet || time.thaiTue) {
+            return [time.thoi || "", time.nhat || "", time.nguyet || "", time.thaiTue || ""]
+                .filter(Boolean).join(" | ");
+        }
+        return time.nguon || "—";
+    }
+
+    /**
+     * Thống kê .txt — nhóm theo tên quẻ, tối đa 100 dòng kết quả.
+     * Format:
+     *   Phong Địa Quan :
+     *   12.11.2026 ** hào động : 2 ** điểm sơ khảo : 86/100
+     */
+    function buildStatsTxt(results, metaHeader) {
+        const MAX = 100;
+        const list = (results || []).slice(0, MAX);
+        const groups = {};
+        const order = [];
+        list.forEach(r => {
+            if (!groups[r.queName]) {
+                groups[r.queName] = [];
+                order.push(r.queName);
+            }
+            groups[r.queName].push(r);
+        });
+
+        let t = "";
+        t += "THỐNG KÊ QUẺ ĐẠT YÊU CẦU (Tìm Quẻ — sơ khảo)\n";
+        t += "Tối đa 100 kết quả | Xuất: " + new Date().toLocaleString("vi-VN") + "\n";
+        if (metaHeader) t += metaHeader.replace(/^===\s*/gm, "").trim() + "\n";
+        t += "Tổng dòng trong file: " + list.length +
+            (results.length > MAX ? " (còn " + (results.length - MAX) + " không ghi — giới hạn 100)\n" : "\n");
+        t += "========================================\n\n";
+        t += "Các quẻ đạt yêu cầu :\n\n";
+
+        order.forEach(name => {
+            t += name + " :\n";
+            groups[name].forEach(r => {
+                const ngay = formatNgayDL(r.time).replace(/\//g, ".");
+                const hao = r.haoDong ? String(r.haoDong) : "tĩnh";
+                t += ngay + " ** hào động : " + hao + " ** điểm sơ khảo : " + r.score + "/100\n";
+            });
+            t += "\n";
+        });
+
+        t += "========================================\n";
+        t += "Hết thống kê.\n";
+        return t;
+    }
+
+    function downloadStatsTxt() {
+        if (!timResults.length) {
+            alert("Chưa có kết quả Tìm Quẻ để thống kê. Hãy chạy Tìm Quẻ trước.");
+            return;
+        }
+        const text = buildStatsTxt(timResults, timHeaderMeta);
+        const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const stamp = new Date();
+        const fname = "thong-ke-tim-que_" +
+            stamp.getFullYear() +
+            ("0" + (stamp.getMonth() + 1)).slice(-2) +
+            ("0" + stamp.getDate()).slice(-2) + "_" +
+            ("0" + stamp.getHours()).slice(-2) +
+            ("0" + stamp.getMinutes()).slice(-2) + ".txt";
+        a.href = url;
+        a.download = fname;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+
+        const btn = $("mcl_tim_statsBtn");
+        const old = btn.innerText;
+        btn.innerText = "✅ ĐÃ TẢI .txt";
+        setTimeout(function () { btn.innerText = old; }, 2000);
     }
 
     function uniqueQueNames(results) {
@@ -1391,6 +1480,7 @@
         copyGeneric($("mcl_tim_output").value, "mcl_tim_copyBtn", "mcl_tim_fallbackBox", "mcl_tim_fallbackText",
             "✅ ĐÃ SAO CHÉP!", "📋 SAO CHÉP KẾT QUẢ TÌM QUẺ");
     });
+    $("mcl_tim_statsBtn").addEventListener("click", downloadStatsTxt);
 
     $("mcl_tim_modeTen").addEventListener("click", function () { setViewMode("ten"); });
     $("mcl_tim_modeList").addEventListener("click", function () { setViewMode("list"); });
