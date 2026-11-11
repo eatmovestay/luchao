@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kiểm tra Trạch Cát</title>
+<style>
+body{font-family:system-ui,sans-serif;padding:14px;font-size:15px;line-height:1.5}
+.ok{color:#15803d}.bad{color:#b91c1c;font-weight:700}li{margin:8px 0}small{color:#555}
+</style></head><body>
+<h3>Kiểm tra module Trạch Cát</h3>
+<p><small>Đặt file này cùng thư mục với total.html và mtrachcat2.js rồi mở trên điện thoại.</small></p>
+<ol id="kq"></ol>
+<script>
+const kq = document.getElementById('kq');
+function ghi(ok, text) { const li = document.createElement('li'); li.className = ok ? 'ok' : 'bad'; li.textContent = (ok ? '✅ ' : '❌ ') + text; kq.appendChild(li); }
+
+// Bắt mọi lỗi cú pháp/chạy của file module và in ra màn hình
+window.addEventListener('error', e => { ghi(false, 'Lỗi khi chạy: ' + e.message + (e.lineno ? ' (dòng ' + e.lineno + ')' : '')); });
+
+async function kiem() {
+  // 1. File mtrachcat2.js có tải được và còn nguyên vẹn không
+  try {
+    const r = await fetch('mtrachcat2.js?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) ghi(false, 'mtrachcat2.js: HTTP ' + r.status + ' (không tìm thấy file cùng thư mục)');
+    else {
+      const t = await r.text();
+      ghi(true, 'mtrachcat2.js tải được: ' + t.length + ' ký tự, ' + t.split('\n').length + ' dòng');
+      ghi(t.includes('tcBtn'), 'Có mã giao diện (nút tím)');
+      ghi(/globalThis\);\s*$/.test(t), 'Cuối file còn nguyên (nếu ❌: file bị cắt khi tải lên)');
+    }
+  } catch (e) { ghi(false, 'Không tải được mtrachcat2.js: ' + e.message); }
+
+  // 2. total.html đang được phục vụ có chứa dòng nạp module không
+  try {
+    const r = await fetch('total.html?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) ghi(false, 'total.html: HTTP ' + r.status);
+    else {
+      const t = await r.text();
+      ghi(t.includes('mtrachcat2.js'), 'total.html có dòng <script src="mtrachcat2.js">');
+      ghi(t.includes('calendar-core.js'), 'total.html có nạp calendar-core.js');
+    }
+  } catch (e) { ghi(false, 'Không đọc được total.html: ' + e.message); }
+
+  // 3. Nạp thật module và xem có chạy được không
+  const s = document.createElement('script');
+  s.src = 'mtrachcat2.js?t=' + Date.now();
+  s.onload = () => {
+    ghi(typeof TrachCat === 'object', 'Đối tượng TrachCat: ' + typeof TrachCat);
+    if (typeof TrachCat === 'object') {
+      const m = TrachCat.moLong('Mão', 'Đinh');
+      ghi(m && m.canChi === 'Đinh Mùi', 'Phép thử mộ long (Mão, năm Đinh) = ' + (m ? m.canChi + ' – ' + m.napAm : '?') + ' [đúng: Đinh Mùi – Thiên hà thủy]');
+      ghi(!!document.getElementById('tcBtn'), 'Nút tím được tạo trên trang này');
+    }
+  };
+  s.onerror = () => ghi(false, 'Trình duyệt không nạp được mtrachcat2.js');
+  document.body.appendChild(s);
+}
+kiem();
+</script></body></html>
